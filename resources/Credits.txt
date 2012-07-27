@@ -1,0 +1,44 @@
+The following credits are for the artwork provided:
+
+Barbara Rivera
+- femaleelfwalkcopy.png = character4.png
+- gunnerwalkcycle1.png = character1.png
+- malesoldiernormal.png = character3.png
+- roguewalkredone1.png = character7.png
+
+base_assets
+- castlefloors.png = tileset1.png
+- castlefloors_outside.png = tileset2.png
+- castlewalls.png = tileset6.png
+- cement.png = tileset3.png
+- cementstair.png = tileset4.png
+- chests.png = chests.png
+- princess.png = character2.png
+
+Clint Bellanger
+- coin_copper.png = coin1.png
+- coin_silver.png = coin2.png
+- coin_gold.png = coin3.png
+
+Emilio J Sanchez, Sierra Steampun OR Anamaris and Krusmira
+- Astraea_walkcycle_NOROCKET.png = character6.png
+
+Guido Bos
+- castle-contest.png = ???
+
+Jonas Klinger Skorpio
+- AgentWalk.png = character12.png
+- Character1Walk.png = character9.png
+
+Leo Villeveygoux
+- Limestone_wall01.png = tileset5.png
+
+Skyler Robert Colladay
+- FBI_walk_cycle.png = character11.png
+- professor_walk_cycle_no_hat.png = character5.png
+
+Stephen Challener
+- baldricfrontwalksheet copy.png = character8.png
+- mage walking poses sheet copy.png = character10.png
+
+
