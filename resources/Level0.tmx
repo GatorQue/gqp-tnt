@@ -1,0 +1,612 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" width="160" height="120" tilewidth="32" tileheight="32">
+ <tileset firstgid="1" name="Castle1" tilewidth="32" tileheight="32">
+  <image source="images/tileset1.png" trans="ff00ff" width="320" height="320"/>
+  <tile id="11">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="12">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="13">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="16">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="17">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="18">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="21">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="23">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="26">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="28">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="31">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="32">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="33">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="36">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="37">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="38">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="61">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="62">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="63">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="71">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="73">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="81">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="82">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="83">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+ </tileset>
+ <tileset firstgid="101" name="Castle2" tilewidth="32" tileheight="32">
+  <image source="images/tileset2.png" trans="ff00ff" width="128" height="160"/>
+ </tileset>
+ <tileset firstgid="121" name="Cement1" tilewidth="32" tileheight="32">
+  <image source="images/tileset3.png" trans="ff00ff" width="224" height="256"/>
+  <tile id="0">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="1">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="2">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="3">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="4">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="5">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="6">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="7">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="13">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="14">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="20">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="21">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="27">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="28">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="34">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="35">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="41">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="42">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="43">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="44">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="45">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="46">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="47">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="48">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="49">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="50">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="51">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="52">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+ </tileset>
+ <tileset firstgid="177" name="Cement2" tilewidth="32" tileheight="32">
+  <image source="images/tileset4.png" trans="ff00ff" width="160" height="128"/>
+ </tileset>
+ <tileset firstgid="197" name="Limestone1" tilewidth="32" tileheight="32">
+  <image source="images/tileset5.png" trans="ff00ff" width="256" height="128"/>
+  <tile id="0">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="1">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="2">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="3">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="4">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="5">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="6">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="7">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="8">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="9">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="10">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="11">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="12">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="13">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="14">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="15">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="16">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="17">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="18">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="19">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="20">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="21">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="22">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="23">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="24">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="25">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="26">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="27">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="28">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="29">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="30">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+  <tile id="31">
+   <properties>
+    <property name="bWall" value="1"/>
+   </properties>
+  </tile>
+ </tileset>
+ <tileset firstgid="229" name="Treasure1" tilewidth="32" tileheight="32">
+  <image source="images/treasure1.png" trans="ff00ff" width="64" height="96"/>
+ </tileset>
+ <tileset firstgid="235" name="Treasure2" tilewidth="32" tileheight="32">
+  <image source="images/treasure2.png" trans="ff00ff" width="256" height="32"/>
+  <tile id="0">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+  <tile id="1">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+  <tile id="2">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+  <tile id="3">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+  <tile id="4">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+  <tile id="5">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+  <tile id="6">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+  <tile id="7">
+   <properties>
+    <property name="uValue" value="1"/>
+   </properties>
+  </tile>
+ </tileset>
+ <tileset firstgid="243" name="Treasure3" tilewidth="32" tileheight="32">
+  <image source="images/treasure3.png" trans="ff00ff" width="256" height="32"/>
+  <tile id="0">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+  <tile id="1">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+  <tile id="2">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+  <tile id="3">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+  <tile id="4">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+  <tile id="5">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+  <tile id="6">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+  <tile id="7">
+   <properties>
+    <property name="uValue" value="5"/>
+   </properties>
+  </tile>
+ </tileset>
+ <tileset firstgid="251" name="Treasure4" tilewidth="32" tileheight="32">
+  <image source="images/treasure4.png" trans="ff00ff" width="256" height="32"/>
+  <tile id="0">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+  <tile id="1">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+  <tile id="2">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+  <tile id="3">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+  <tile id="4">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+  <tile id="5">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+  <tile id="6">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+  <tile id="7">
+   <properties>
+    <property name="uValue" value="10"/>
+   </properties>
+  </tile>
+ </tileset>
+ <layer name="Floor" width="160" height="120">
+  <data encoding="base64" compression="zlib">
+   eJzt0rENxEAQAkB34cQNff8NfURwFXASg7QFwM7ziHTzFu8r36987f7N3yf88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxd6O/5f83938v6N/8fcIff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHH3+lv+f/N/b8L+jd/n/DHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxd/pr7t/sz3+3e8Iff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHHH3/88ccff/zxxx9//PHH3+lveX/+e5es9uePP/52909W+/PHH3+7+yer/fnjj7/d/ZPV/vzxx9/u/slqf/744293/2S1P3/88be7f7Lanz/++NvdP1ntzx9//O3un6z2548//nb3T1b788cff7v7J6v9+eOPv939Rdr5A66lEnc=
+  </data>
+ </layer>
+ <layer name="Treasure" width="160" height="120">
+  <properties>
+   <property name="bAnimation" value="1"/>
+   <property name="bTreasure" value="1"/>
+   <property name="fFrameDelay" value="0.08"/>
+   <property name="rFrameRect" value="0,0,256,32"/>
+   <property name="wFrameModifier" value="1,0"/>
+  </properties>
+  <data encoding="base64" compression="zlib">
+   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
+  </data>
+ </layer>
+ <layer name="Chests" width="160" height="120">
+  <properties>
+   <property name="bTreasure" value="1"/>
+   <property name="uValue" value="50"/>
+  </properties>
+  <data encoding="base64" compression="zlib">
+   eJzt3UFywzAIAED//5/5Rw+Zji91G6uSQbD7gQgQCJ9yHACQzyv6AKTjTozbIXc7nBEAonV6LzvFChDNzGV37nAO6gAAfLMXAHCXt6OfqjUfjatqPgCAn3n74XP6BQDowt7Dlbt3o+Nd6hjzXXK0PzUEoALv2UkuAICq7Dlj5A32oV+BGcwSAGAFO0aMkbyr1TX5XE++QB8AAAD1/PWdU/076In4InJYvW4RdszpjmeepXPswNt/54A5AowyPyAnvclq7hgAAJyy7sevI+/ZAMjN+wH8JnpGRP8+wAizC+rR1wDASnaNvirVvlIsAKuZmbAv/ZufGvWl9nIQqWruq8YF5Gf+AABwxa4IZGZGMZP7BHvxPy0QZ8de2PHMAADQlf0dTpH9oBffPs2DfAGsYb7KAUTTg2PkDe6Z2TNP959+B4A+/E8nQF6d53Pn2AF4nncHmOVqnpgzuVWvT7b4sp0HgBy+AB55VeE=
+  </data>
+ </layer>
+ <layer name="Inner" width="160" height="120">
+  <properties>
+   <property name="bWall" value="1"/>
+  </properties>
+  <data encoding="base64" compression="zlib">
+   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
+  </data>
+ </layer>
+ <layer name="Outer" width="160" height="120">
+  <properties>
+   <property name="bWall" value="1"/>
+  </properties>
+  <data encoding="base64" compression="zlib">
+   eJzt3UtqwzAUQNHsf3GeWetpCzWIh1w6u5NzQCSNHdlxhD5Pcnp/Pp/rO92/jz9pjTS3379pba/vz+/tfac87pFmvtfn73NZ2zHW2H+mNfbfz/c65Dc/wzz227ndL3m+ncfM89m2pzVef/t885rO9/znWKf3n671+pyv0/7557nObfPzQ+Epg1B46kMoPO00FJQ/Ss/4BArPeBsKTywGCuo/SuJ/lJQ/StpfSuIvlMSfKZn/pWT9FSX9P0rP+lYoiL9QUv9Rsv6AkvEHJfEXSsYflJ77hqGg/qNk/peS9aeU1H+U9P8omf+gJP5MyfwbJfd/UBJ/oWT8S8n6U0rqP0rGH5Ssv6Ik/kzJ+IOS9peS+o+S+Q9Kxh+UrP+jZPxByfo/Ssa/lIx/KWl/KVn/Qsn4l5L+HyX1HyXxF0rmfymJv1Ay/qDk/ktK+n+UxF8oaX8pKX+UxJ8pib9QEn+mJP5CSf+PkvXPlMRfKBl/UFL+KPn/l5T0/yiZ/6Dk99co6f9Rsv6Ukvk3Svp/lLS/lIw/KGl/KRl/UFL+KOn/UXL/ByXrXyhZ/0JJ+aNk/oOS8Qcl8RdK4s+U3H9JSfmjpPxREv+jpPxRMv9LSfyFkvqPkvqPkvqPkt9/pqT9paT9pST+TMn6P0r6f5S0v5SMPygpf5Tcf0lJ/4+S8kfp+f3Ta0vPnPAaz+dr95bWeNzz2fe9tnzW+HvP69qez/O7xvY9j+twjHmepzz2fd/eP4+5Rrr+2G8eZ57Xfo1O20/7ze/jdE1O39PMf37Pb8d9ux5v5eJ0TnPbT/oCKjfKaw==
+  </data>
+ </layer>
+</map>
