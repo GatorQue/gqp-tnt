@@ -6,7 +6,7 @@
  * @author Ryan Lindeman
  * @date 20110704 - Initial Release
  */
-#include "TntApp.hpp"
+#include "TnTApp.hpp"
 #include "CharacterState.hpp"
 #include "GameState.hpp"
 #include "NetworkState.hpp"

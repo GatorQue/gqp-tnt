@@ -9,5 +9,5 @@ set_option(TNT_ENABLED TRUE BOOL "Build 'TnT' project?")
 set_option(TNT_BUILD_DOCS TRUE BOOL "Build 'TnT' documentation?")
 
 # Define the external libraries this project depends on
-set(TNT_DEPS TMXPARSER SFML GQE)
+set(TNT_DEPS TmxParser SFML GQE)
 
