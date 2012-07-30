@@ -5,6 +5,7 @@
  * @file src/LevelSystem.hpp
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
+ * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
  */
 #ifndef LEVEL_SYSTEM_HPP_INCLUDED
 #define LEVEL_SYSTEM_HPP_INCLUDED
@@ -26,7 +27,7 @@ class LevelSystem : public GQE::ISystem
     /**
      * LevelSystem default ctor
      * @param[in] theApp address to IApp based class
-     * @param[in] theRenderSystem pointer which will be used for each Prototype
+     * @param[in] theAnimationSystem pointer which will be used for each Prototype
      * @param[in] theMapFilename of the map to load initially
      * @param[in] theLoadingFilename of the Loading...Please Wait screen
      * @param[in] theFontFilename to use when showing the percent complete value
@@ -35,7 +36,6 @@ class LevelSystem : public GQE::ISystem
      * @param[in] theLoaderCount is the number of consecutive loader calls in Draw
      */
     LevelSystem(GQE::IApp& theApp,
-        GQE::ISystem* theRenderSystem,
         GQE::ISystem* theAnimationSystem,
         const GQE::typeAssetID theMapFilename = "",
         const GQE::typeAssetID theLoadingFilename = "",
@@ -87,23 +87,14 @@ class LevelSystem : public GQE::ISystem
     virtual void Draw(void);
 
     /**
-     * DrawBar is responsible for drawing the percent complete bar using
-     * thePercent value provided. A default text implementation is provided if
-     * no class derives from LevelSystem and overrides this method.
-     * @param[in] thePercent complete as a floating point value from 0.0 - 1.0
-     */
-    virtual void DrawBar(void);
-
-    /**
      * SwitchScreen provides a way to switch to a different screen in the level
-     * being shown right now. It will first remove the RenderSystem from each
-     * Instance in the current screen and then add each Instance to the
-     * RenderSystem in the new screen. It will only perform this task if
-     * theScreen value provided is less than mScreenWith*mScreenHeight.
+     * being shown right now. It will first remove each animated tile from the
+     * AnimationSystem and then add each new animated tile on the new screen to
+     * the AnimationSystem. It will only perform this task if theScreen values
+     * provided are within mScreenWith and mScreenHeight.
      * @param[in] theScreen to switch to in the current level/map
-     * @param[in] thePosition to use for the player on the new screen
      */
-    void SwitchScreen(GQE::Uint32 theScreen, sf::Vector2f thePosition);
+    void SwitchScreen(sf::Vector2u theScreen);
 
     /**
      * SwitchPosition provides a way to move each IEntity registered with this
@@ -111,7 +102,7 @@ class LevelSystem : public GQE::ISystem
      * the same screen in the level being shown right now.
      * @param[in] thePosition to move all registered IEntity classes to
      */
-    void SwitchPosition(sf::Vector2f thePosition);
+    //void SwitchPosition(sf::Vector2f thePosition);
 
     /**
      * LoadMap can be called to attempt to load theFilename map provided. If
@@ -119,15 +110,35 @@ class LevelSystem : public GQE::ISystem
      * otherwise the loading of theFilename provided will begin. The Draw
      * method is responsible for showing a Loading...please wait image during
      * the loading of the level.
-     * @param[in] theFilename of the map to open and load
-     * @param[in] theScreen to default to after the map has been loaded
+     * @param[in] theMapFilename to open and load
+     * @param[in] theLoadingFilename to open and load
      */
     bool LoadMap(const GQE::typeAssetID theMapFilename,
-        const GQE::typeAssetID theLoadingFilename,
-        GQE::Uint32 theScreen = 0,
-        sf::Vector2f thePosition = sf::Vector2f(0.0,0.0f));
+        const GQE::typeAssetID theLoadingFilename);
 
   protected:
+    /**
+     * UpdateCoordinates is responsible for updating theEntity provided using
+     * its vPosition, wScreen, and rBoundingBox properties and the following
+     * equations.
+     * TileCenter.x = ((vPosition.x + rBoundingBox.left + rBoundingBox.width / 2) /
+     *           Tile.width) % ScreenTile.width
+     * TileCenter.y = ((vPosition.y + rBoundingBox.top + rBoundingBox.height / 2) / 
+     *           Tile.height) % ScreenTile.height
+     * TileLeft = ((vPosition.x + vVelocity.x + rBoundingBox.left) /
+     *           Tile.width) % ScreenTile.width
+     * TileRight = ((vPosition.x + vVelocity.x + rBoundingBox.left + rBoundingBox.width) /
+     *           Tile.width) % ScreenTile.width
+     * TileUp = ((vPosition.y + vVelocity.y + rBoundingBox.top) / 
+     *           Tile.height) % ScreenTile.height
+     * TileUp = ((vPosition.y + vVelocity.y + rBoundingBox.top + rBoundingBox.height) / 
+     *           Tile.height) % ScreenTile.height
+     * MapC.x = Tile.x + wScreen.x * ScreenTile.width
+     * MapC.y = Tile.y + wScreen.y * ScreenTile.height
+     * @param[in] theEntity to update the map coordinates for
+     */
+    void UpdateCoordinates(GQE::IEntity* theEntity);
+
     /**
      * CheckTreasure is responsible for checking theEntity provided against
      * each treasure tile to see if they can pick it up.
@@ -150,6 +161,20 @@ class LevelSystem : public GQE::ISystem
      * @param[in] theEntity to check screen edges against
      */
     void CheckScreenEdges(GQE::IEntity* theEntity);
+
+    /**
+     * DrawBar is responsible for drawing the percent complete bar using
+     * thePercent value provided. A default text implementation is provided if
+     * no class derives from LevelSystem and overrides this method.
+     * @param[in] thePercent complete as a floating point value from 0.0 - 1.0
+     */
+    virtual void DrawBar(void);
+
+    /**
+     * DrawTiles is responsible for drawing the tiles for the screen of the
+     * local player.
+     */
+    virtual void DrawTiles(void);
 
     /**
      * HandleInit is called to allow each derived ISystem to perform any
@@ -181,7 +206,6 @@ class LevelSystem : public GQE::ISystem
       Tmx::Map&          map;      ///< The Tmx::Map object from TmxAsset above
       GQE::ImageAsset    loading;  ///< The Loading, Please Wait background screen to display
       GQE::ImageAsset*   tilesets; ///< An array of ImageAssets for each Tileset in the map
-      GQE::Uint32        screen;   ///< The default screen to show after displaying the map
       int                tileset;  ///< Which tileset we are loading right now
       int                layer;    ///< Which layer we are loading right now
       int                group;    ///< Which group we are loading right now
@@ -191,14 +215,12 @@ class LevelSystem : public GQE::ISystem
       GQE::Uint32        total;    ///< The total used to determine percent complete
       float              percent;  ///< The computed percent complete for each stage
       sLoadContext(GQE::typeAssetID theMapFilename,
-          GQE::typeAssetID theLoadingFilename,
-          GQE::Uint32 theScreen) :
+          GQE::typeAssetID theLoadingFilename) :
         stage(UnknownStage),
         asset(theMapFilename, GQE::AssetLoadNow),
         map(asset.GetAsset()),
         loading(theLoadingFilename, GQE::AssetLoadNow),
         tilesets(NULL),
-        screen(theScreen),
         tileset(0),
         layer(0),
         group(0),
@@ -211,9 +233,14 @@ class LevelSystem : public GQE::ISystem
       }
     } LoadContext;
 
+    typedef struct sScreenInfo {
+      std::map<const GQE::Uint32, std::deque<GQE::IEntity*> > tiles;
+      std::deque<GQE::IEntity*> walls;
+      std::deque<GQE::IEntity*> treasures;
+    } ScreenInfo;
+
     // Variables
     /////////////////////////////////////////////////////////////////////////
-    GQE::ISystem*      mRenderSystem;
     GQE::ISystem*      mAnimationSystem;
     GQE::Prototype     mTile;
     GQE::Prototype     mObject;
@@ -224,16 +251,15 @@ class LevelSystem : public GQE::ISystem
     GQE::Uint32        mScreenHeight;
     GQE::Uint32        mTileWidth;
     GQE::Uint32        mTileHeight;
+    sf::Vector2f       mTileScale;
     GQE::typeAssetID   mMapFilename;
     GQE::typeAssetID   mLoadingFilename;
-    GQE::Uint32        mScreen;
+    sf::Vector2u       mScreen;
     sf::Font           mFont;
-    sf::Vector2f       mPosition;
     LoadContext*       mLoader;
     GQE::Uint32        mLoaderCount;
-    std::map<const GQE::Uint32, std::deque<GQE::Instance*> > mScreens;
-    std::vector<GQE::Instance*> mTreasure;
-    std::vector<std::vector<bool> > mWalls;
+    // Map of screens to each z-ordered deque of IEntity* tiles for rendering purposes
+    std::map<const GQE::Uint32, ScreenInfo> mScreens;
 
     /**
      * ResetProperties will set the LevelSystem properties of all IEntity
@@ -242,7 +268,7 @@ class LevelSystem : public GQE::ISystem
      * interface.
      * @param[in] theVisible value to use for each registered IEntity value
      */
-    void ResetProperties(bool theVisible);
+    //void ResetProperties(bool theVisible);
 
     /**
      * DropAllScreens is responsible for unloading and deleting each screen
@@ -255,25 +281,14 @@ class LevelSystem : public GQE::ISystem
      * to theScreen specified.
      * @param[in] theScreen to load by adding each Instance to mRenderSystem
      */
-    void LoadScreen(GQE::Uint32 theScreen);
+    void LoadScreen(sf::Vector2u theScreen);
 
     /**
      * UnloadScreen is responsible for dropping each Instance from the
      * RenderSystem for theScreen specified.
      * @param[in] theScreen to unload
      */
-    void UnloadScreen(GQE::Uint32 theScreen);
-
-    /**
-     * LoadProperties is responsible for adding each property as a property of
-     * theEntity provided. Property names begin with a special letter
-     * that determines the type of each property. These include i=GQE::Int32,
-     * u=GQE::Uint32, f=float, b=boolean, s=string, etc.
-     * @param[in] theProperties to processs
-     * @param[in] theEntity to store each property into
-     */
-    void LoadProperties(std::map<std::string, std::string> theProperties,
-        GQE::IEntity* theEntity); 
+    void UnloadScreen(sf::Vector2u theScreen);
 
     /**
      * LoadStage1 will be called by the Draw method to perform stage 1 of the
@@ -305,6 +320,17 @@ class LevelSystem : public GQE::ISystem
      * previous stages have been completed.
      */
     void LoadStage4(void);
+
+    /**
+     * LoadProperties is responsible for adding each property as a property of
+     * theEntity provided. Property names begin with a special letter
+     * that determines the type of each property. These include i=GQE::Int32,
+     * u=GQE::Uint32, f=float, b=boolean, s=string, etc.
+     * @param[in] theProperties to processs
+     * @param[in] theEntity to store each property into
+     */
+    void LoadProperties(std::map<std::string, std::string> theProperties,
+        GQE::IEntity* theEntity); 
 };
 #endif // LEVEL_CONTROL_SYSTEM_HPP_INCLUDED
 

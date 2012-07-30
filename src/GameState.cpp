@@ -4,6 +4,7 @@
  * @file src/GameState.cpp
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
+ * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
  */
 #include "GameState.hpp"
 #include <SFML/Network.hpp>
@@ -19,8 +20,12 @@ GameState::GameState(GQE::IApp& theApp) :
   mAnimationSystem(theApp),
   mControlSystem(theApp),
   mMovementSystem(theApp),
-  mRenderSystem(theApp),
-  mLevelSystem(theApp, &mRenderSystem, &mAnimationSystem),
+  mLevelSystem(theApp, &mAnimationSystem,
+    "resources/Level0.tmx",
+    "resources/images/loading.png",
+    "resources/arial.ttf",
+    32,  // each screen is 32 tiles across
+    24), // each screen is 24 tiles down
   mNetworkSystem(theApp),
   mPlayer("player",100),
   mPlayerID(0),
@@ -44,7 +49,6 @@ void GameState::DoInit(void)
   mPlayer.AddSystem(&mAnimationSystem);
   mPlayer.AddSystem(&mLevelSystem);
   mPlayer.AddSystem(&mMovementSystem);
-  mPlayer.AddSystem(&mRenderSystem);
   mPlayer.AddSystem(&mNetworkSystem);
 
   // Get the number of players for the current game
@@ -106,17 +110,6 @@ void GameState::DoInit(void)
         sf::IntRect anSpriteRect(0,64*2,64,64);
     #endif
         anInstance->mProperties.Set<sf::IntRect>("rSpriteRect", anSpriteRect);
-        // Add some custom properties starting with our rBoundingBox property
-#if SFML_VERSION_MAJOR<2
-        anInstance->mProperties.Add<sf::IntRect>("rBoundingBox",sf::IntRect(16,32,48,32));
-#else
-        anInstance->mProperties.Add<sf::IntRect>("rBoundingBox",sf::IntRect(16,32,32,32));
-#endif
-        // Add our score property
-        anInstance->mProperties.Add<GQE::Uint32>("uScore", 0);
-
-        // Set our visible property
-        anInstance->mProperties.Set<bool>("bVisible", false);
 
         // Set our animation properties
         anInstance->mProperties.Set<float>("fFrameDelay", 0.08f);
@@ -141,16 +134,14 @@ void GameState::DoInit(void)
             sf::Vector2f((float)(mApp.mWindow.getSize().x - anSpriteRect.width) / 2,
               (float)(mApp.mWindow.getSize().y - anSpriteRect.height) / 2));
     #endif
+
         // Only the first player is a local player, all others are network players to us
         if(iloop == 0)
         {
           // Keep track of our PlayerID
           mPlayerID = anInstance->GetID();
 
-          // Trigger the level and screen to load during first call to UpdateFixed
-          anInstance->mProperties.Set<GQE::typeActionID>("sLevelLoading", "resources/images/loading.png");
-          anInstance->mProperties.Set<GQE::typeActionID>("sLevelMap", "resources/Level0.tmx");
-          anInstance->mProperties.Set<GQE::Uint32>("uLevelScreen", 0);
+          // We are a local player
           anInstance->mProperties.Set<bool>("bNetworkLocal", true);
 
           // Add this instance to our ControlSystem
@@ -205,7 +196,6 @@ void GameState::UpdateVariable(float theElapsedTime)
 
 void GameState::Draw(void)
 {
-  mRenderSystem.Draw();
   mLevelSystem.Draw();
 }
 
