@@ -4,6 +4,7 @@
  * @file src/GameState.hpp
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
+ * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
  */
 
 #ifndef   GAME_STATE_HPP_INCLUDED
@@ -76,8 +77,6 @@ class GameState : public GQE::IState
     ControlSystem        mControlSystem;
     /// The movement system for handling our player movement
     GQE::MovementSystem  mMovementSystem;
-    /// The render system for handling rendering of tiles, players, etc
-    GQE::RenderSystem    mRenderSystem;
     /// The level system for loading our map level (must come after mRenderSystem)
     LevelSystem          mLevelSystem;
     /// The network system for managing network input/output
