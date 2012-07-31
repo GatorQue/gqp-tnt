@@ -5,6 +5,7 @@
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 
 #ifndef   GAME_STATE_HPP_INCLUDED
@@ -15,9 +16,11 @@
 #include <GQE/Entity/systems/AnimationSystem.hpp>
 #include <GQE/Entity/systems/MovementSystem.hpp>
 #include <GQE/Entity/systems/RenderSystem.hpp>
-#include "ControlSystem.hpp"
 #include "LevelSystem.hpp"
 #include "NetworkSystem.hpp"
+
+// Forward declare the TnTApp class
+class TnTApp;
 
 class GameState : public GQE::IState
 {
@@ -26,7 +29,7 @@ class GameState : public GQE::IState
      * GameState constructor
      * @param[in] theApp is an address to the App class.
      */
-    GameState(GQE::IApp& theApp);
+    GameState(TnTApp& theApp);
 
     /**
      * GameState deconstructor
@@ -73,10 +76,6 @@ class GameState : public GQE::IState
   private:
     /// The animation system for our players and treasures
     GQE::AnimationSystem mAnimationSystem;
-    /// The control system for our input to player transitions
-    ControlSystem        mControlSystem;
-    /// The movement system for handling our player movement
-    GQE::MovementSystem  mMovementSystem;
     /// The level system for loading our map level (must come after mRenderSystem)
     LevelSystem          mLevelSystem;
     /// The network system for managing network input/output

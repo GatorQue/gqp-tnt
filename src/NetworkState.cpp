@@ -4,22 +4,24 @@
  * @file src/NetworkState.cpp
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 #include "NetworkState.hpp"
 #include <SFML/Graphics.hpp>
 #include <GQE/Core/assets/ImageAsset.hpp>
 #include <GQE/Core/interfaces/IApp.hpp>
 #include <GQE/Entity/classes/Instance.hpp>
+#include "TnTApp.hpp"
 
-NetworkState::NetworkState(GQE::IApp& theApp) :
+NetworkState::NetworkState(TnTApp& theApp) :
   GQE::IState("Game",theApp),
+  mTnTApp(theApp),
   mAnimationSystem(theApp),
   mRenderSystem(theApp),
   mPlayer("player", 255),
   mPlayerImage(""),
   mPlayerCount(0),
   mBackground("resources/images/network.png", GQE::AssetLoadNow),
-  mClientID(0),
   mServerActive(false)
 {
   // Bind our game server socket
@@ -32,19 +34,12 @@ NetworkState::NetworkState(GQE::IApp& theApp) :
   {
     // Set our server as non-blocking
     mServer.setBlocking(false);
-  }
 
-  // Bind our game client socket
-  anStatus = mClient.bind(sf::Socket::AnyPort);
-  if(anStatus == sf::Socket::Error)
-  {
-    // Signal the application to exit
-    mApp.Quit(GQE::StatusError);
+    ILOG() << "NetworkState::ctor() Server Active!" << std::endl;
   }
   else
   {
-    // Set our client as non-blocking
-    mClient.setBlocking(false);
+    ILOG() << "NetworkState::ctor() Server Inactive!" << std::endl;
   }
 }
 
@@ -58,12 +53,6 @@ void NetworkState::DoInit(void)
   // First call our base class implementation
   IState::DoInit();
 
-  // Use time to seed our randomizer
-  srand(time((time_t*)NULL));
-
-  // Use the first random number as our client ID
-  mClientID = rand();
-
   // Enable graphics and game performance statistics
   mApp.mStatManager.SetShow(true);
 
@@ -74,9 +63,13 @@ void NetworkState::DoInit(void)
   // Retrieve the character this player has selected in CharacterState
   mPlayerImage = mApp.mProperties.Get<GQE::typeAssetID>("sCharacter");
 
+  // What ID and port were we assigned?
+  ILOG() << "NetworkState::DoInit() ClientID=" << mTnTApp.mClientID << ", port="
+    << mTnTApp.mClient.getLocalPort() << std::endl;
+
   // Now add this player as the first player
-  AddPlayer(mClientID, sf::IpAddress::getLocalAddress().toString(),
-    mClient.getLocalPort(), mPlayerImage);
+  AddPlayer(mTnTApp.mClientID, sf::IpAddress::getLocalAddress(),
+    mTnTApp.mClient.getLocalPort(), mPlayerImage);
 }
 
 void NetworkState::ReInit()
@@ -98,13 +91,10 @@ void NetworkState::HandleEvents(sf::Event theEvent)
     )
   {
     // Make note of the number of players for this game
-    mApp.mProperties.Add<GQE::Uint32>("uPlayerCount", mPlayerImages.size());
-
-    // Unbind our client socket
-    mClient.unbind();
+    mTnTApp.mProperties.Add<GQE::Uint32>("uPlayerCount", mPlayers.size());
 
     // Drop this active state
-    mApp.mStateManager.DropActiveState();
+    mTnTApp.mStateManager.DropActiveState();
   }
 }
 
@@ -138,10 +128,10 @@ void NetworkState::Draw(void)
 
 #if (SFML_VERSION_MAJOR < 2)
   // Draw our Background screen
-  mApp.mWindow.Draw(anBackground);
+  mTnTApp.mWindow.Draw(anBackground);
 #else
   // Draw our Background screen
-  mApp.mWindow.draw(anBackground);
+  mTnTApp.mWindow.draw(anBackground);
 #endif
 
   // Allow our RenderSystem to draw our character
@@ -180,104 +170,118 @@ void NetworkState::HandleCleanup(void)
   mPlayerImages.clear();
 }
 
-void NetworkState::AddPlayer(GQE::Uint32 theID, std::string theAddress,
+void NetworkState::AddPlayer(GQE::Uint32 theID, sf::IpAddress theAddress,
   unsigned short thePort, GQE::typeAssetID theAssetID)
 {
-  // Create an Instance to represent this player and set its various properties
-  GQE::Instance* anInstance = mPlayer.MakeInstance();
-
-  // Did we get a valid Instance? then set some of its properties now
-  if(anInstance != NULL)
+  // Is this player not found? then add him now
+  if(mPlayers.find(theID) == mPlayers.end())
   {
-    // Start with our selected image
+    // What ID and port were we assigned?
+    ILOG() << "NetworkState::AddPlayer() ID=" << theID << ", addr="
+      << theAddress.toString() << ", port=" << thePort
+      << ", assetID=" << theAssetID << std::endl;
+
+    // Create an Instance to represent this player and set its various properties
+    GQE::Instance* anInstance = mPlayer.MakeInstance();
+
+    // Did we get a valid Instance? then set some of its properties now
+    if(anInstance != NULL)
+    {
+      // Start with our selected image
 #if (SFML_VERSION_MAJOR < 2)
-    sf::Image* anImage = new(std::nothrow) sf::Image();
+      sf::Image* anImage = new(std::nothrow) sf::Image();
 #else
-    sf::Texture* anImage = new(std::nothrow) sf::Texture();
+      sf::Texture* anImage = new(std::nothrow) sf::Texture();
 #endif
 
 #if (SFML_VERSION_MAJOR < 2)
-    anImage->LoadFromFile(theAssetID);
+      anImage->LoadFromFile(theAssetID);
 #else
-    anImage->loadFromFile(theAssetID);
+      anImage->loadFromFile(theAssetID);
 #endif
 
-    // Add the character to our list of character images chosen
-    mPlayerImages.push_back(anImage);
+      // Add the character to our list of character images chosen
+      mPlayerImages.push_back(anImage);
 
-    // Set the player image
-    anInstance->mProperties.Set<sf::Sprite>("Sprite", sf::Sprite(*anImage));
+      // Set the player image
+      anInstance->mProperties.Set<sf::Sprite>("Sprite", sf::Sprite(*anImage));
 
-    // Get the SpriteRect property from our instance
+      // Get the SpriteRect property from our instance
 #if (SFML_VERSION_MAJOR < 2)
-    sf::IntRect anSpriteRect(0,64*2,64,64*(2+1));
+      sf::IntRect anSpriteRect(0,64*2,64,64*(2+1));
 #else
-    sf::IntRect anSpriteRect(0,64*2,64,64);
+      sf::IntRect anSpriteRect(0,64*2,64,64);
 #endif
-    anInstance->mProperties.Set<sf::IntRect>("rSpriteRect", anSpriteRect);
+      anInstance->mProperties.Set<sf::IntRect>("rSpriteRect", anSpriteRect);
 
-    // Set our visible property
-    anInstance->mProperties.Set<bool>("bVisible", true);
+      // Set our visible property
+      anInstance->mProperties.Set<bool>("bVisible", true);
 
-    // Set our animation properties
-    anInstance->mProperties.Set<float>("fFrameDelay", 0.08f);
-    anInstance->mProperties.Set<sf::Vector2u>("wFrameModifier", sf::Vector2u(1,0));
+      // Set our animation properties
+      anInstance->mProperties.Set<float>("fFrameDelay", 0.08f);
+      anInstance->mProperties.Set<sf::Vector2u>("wFrameModifier", sf::Vector2u(1,0));
 #if (SFML_VERSION_MAJOR < 2)
-    anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
-        sf::IntRect(0,0,anImage->GetWidth(), anImage->GetHeight());
+      anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
+          sf::IntRect(0,0,anImage->GetWidth(), anImage->GetHeight());
 #else
-    anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
-        sf::IntRect(0,0,anImage->getSize().x, anImage->getSize().y));
+      anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
+          sf::IntRect(0,0,anImage->getSize().x, anImage->getSize().y));
 #endif
 
-    // Compute some valuable constants for placing each player image
+      // Compute some valuable constants for placing each player image
 #if (SFML_VERSION_MAJOR < 2)
-    const GQE::Uint32 anMaxWidth = mApp.mWindow.GetWidth() / anSpriteRect.GetWidth();
+      const GQE::Uint32 anMaxWidth = mApp.mWindow.GetWidth() / anSpriteRect.GetWidth();
 #else
-    const GQE::Uint32 anMaxWidth = mApp.mWindow.getSize().x / anSpriteRect.width;
+      const GQE::Uint32 anMaxWidth = mApp.mWindow.getSize().x / anSpriteRect.width;
 #endif
-    const GQE::Uint32 anImageX = mPlayerCount % anMaxWidth;
-    const GQE::Uint32 anImageY = mPlayerCount / anMaxWidth;
+      const GQE::Uint32 anImageX = mPlayerCount % anMaxWidth;
+      const GQE::Uint32 anImageY = mPlayerCount / anMaxWidth;
 
-    // Set initial position on the screen to the middle of the screen
+      // Set initial position on the screen to the middle of the screen
 #if (SFML_VERSION_MAJOR < 2)
-    anInstance->mProperties.Set<sf::Vector2f>("vPosition",
-        sf::Vector2f((float)(anImageX * anSpriteRect.GetWidth()),
-        (float)((mApp.mWindow.GetHeight() - anSpriteRect.GetHeight()) / 2) +
-        (anImageY * anSpriteRect.GetHeight())));
+      anInstance->mProperties.Set<sf::Vector2f>("vPosition",
+          sf::Vector2f((float)(anImageX * anSpriteRect.GetWidth()),
+          (float)((mApp.mWindow.GetHeight() - anSpriteRect.GetHeight()) / 2) +
+          (anImageY * anSpriteRect.GetHeight())));
 #else
-    anInstance->mProperties.Set<sf::Vector2f>("vPosition",
-      sf::Vector2f((float)(anImageX * anSpriteRect.width),
-      (float)((mApp.mWindow.getSize().y - anSpriteRect.height) / 2) +
-      (anImageY * anSpriteRect.height)));
+      anInstance->mProperties.Set<sf::Vector2f>("vPosition",
+        sf::Vector2f((float)(anImageX * anSpriteRect.width),
+        (float)((mApp.mWindow.getSize().y - anSpriteRect.height) / 2) +
+        (anImageY * anSpriteRect.height)));
 #endif
 
-    // Create a string stream to create our player id tag
-    std::string anPlayerID("sPlayerID");
-    std::string anPlayerAddr("sPlayerAddr");
-    std::string anPlayerPort("uPlayerPort");
-    std::string anPlayerAsset("sPlayerAssetID");
-    std::ostringstream anPlayerNumber;
+      // Create a string stream to create our player id tag
+      std::string anPlayerID("sPlayerID");
+      std::string anPlayerAddr("sPlayerAddr");
+      std::string anPlayerPort("uPlayerPort");
+      std::string anPlayerAsset("sPlayerAssetID");
+      std::ostringstream anPlayerNumber;
 
-    // Create a string version of our player number to append to the above strings
-    anPlayerNumber << ++mPlayerCount;
+      // Create a string version of our player number to append to the above strings
+      anPlayerNumber << ++mPlayerCount;
 
-    // Append player number to each player
-    anPlayerID.append(anPlayerNumber.str());
-    anPlayerAddr.append(anPlayerNumber.str());
-    anPlayerPort.append(anPlayerNumber.str());
-    anPlayerAsset.append(anPlayerNumber.str());
+      // Append player number to each player
+      anPlayerID.append(anPlayerNumber.str());
+      anPlayerAddr.append(anPlayerNumber.str());
+      anPlayerPort.append(anPlayerNumber.str());
+      anPlayerAsset.append(anPlayerNumber.str());
 
-    // Now register these with our IApp properties
-    mApp.mProperties.Add<GQE::Uint32>(anPlayerID, theID);
-    mApp.mProperties.Add<std::string>(anPlayerAddr, theAddress);
-    mApp.mProperties.Add<unsigned short>(anPlayerPort, thePort);
-    mApp.mProperties.Add<GQE::typeAssetID>(anPlayerAsset, theAssetID);
-  }
-  else
-  {
-    // Signal the application to exit
-    mApp.Quit(GQE::StatusError);
+      // Now register these with our IApp properties
+      mTnTApp.mProperties.Add<GQE::Uint32>(anPlayerID, theID);
+      mTnTApp.mProperties.Add<std::string>(anPlayerAddr, theAddress.toString());
+      mTnTApp.mProperties.Add<unsigned short>(anPlayerPort, thePort);
+      mTnTApp.mProperties.Add<GQE::typeAssetID>(anPlayerAsset, theAssetID);
+
+      // Add this new player to our list of players
+      mPlayers[theID].addr = theAddress;
+      mPlayers[theID].port = thePort;
+      mPlayers[theID].assetID = theAssetID;
+    }
+    else
+    {
+      // Signal the application to exit
+      mApp.Quit(GQE::StatusError);
+    }
   }
 }
 
@@ -309,40 +313,39 @@ void NetworkState::ProcessClients(void)
     anData >> anClientPort;
     anData >> anAssetID;
 
-    // If client is not found, and its not us, then add it now
-    if(mServerClients.find(anClientID) == mServerClients.end() &&
-      anRemoteAddr.toString() == anClientAddr &&
-      anRemotePort == anClientPort)
+    // What ID and port were we assigned?
+    //ILOG() << "NetworkState::ProcessClients() received ID=" << anClientID
+    //  << ", addr=" << anClientAddr << ", port=" << anClientPort
+    //  << ", assetID=" << anAssetID << std::endl;
+
+    // Send all previously registered players to the new player joining
+    std::map<const sf::Uint32, typeClientInfo>::iterator anIter;
+    anIter = mPlayers.begin();
+    while(anIter != mPlayers.end())
     {
-      // Send all previously registered players to the new player joining
-      std::map<const sf::Uint32, typeClientInfo>::iterator anIter;
-      anIter = mServerClients.begin();
-      while(anIter != mServerClients.end())
-      {
-        // Prepare a reply for each previously registered client
-        sf::Packet anReply;
-        anReply << anIter->first;
-        anReply << anIter->second.addr.toString();
-        anReply << anIter->second.port;
-        anReply << anIter->second.assetID;
+      // Prepare a reply for each previously registered client
+      sf::Packet anReply;
+      anReply << anIter->first;
+      anReply << anIter->second.addr.toString();
+      anReply << anIter->second.port;
+      anReply << anIter->second.assetID;
 
-        // Send an acknowlegement message back to the client
-        mServer.send(anReply, anRemoteAddr, anRemotePort);
+      //ILOG() << "NetworkState::ProcessClients() sending ID=" << anIter->first
+      //  << ", addr=" << anIter->second.addr.toString()
+      //  << ", port=" << anIter->second.port
+      //  << ", assetID=" << anIter->second.assetID << std::endl;
 
-        // Move on to the next client registered
-        anIter++;
-      }
-    
-      // Store the client IP Address and port
-      mServerClients[anClientID].addr = anRemoteAddr;
-      mServerClients[anClientID].port = anRemotePort;
-      mServerClients[anClientID].assetID = anAssetID;
+      // Send an acknowlegement message back to the client
+      mServer.send(anReply, anRemoteAddr, anRemotePort);
 
-      if(anClientID != mClientID)
-      {
-        // Add network player to our list of players
-        AddPlayer(anClientID, anRemoteAddr.toString(), anRemotePort, anAssetID);
-      }
+      // Move on to the next client registered
+      anIter++;
+    }
+
+    // If this is not a local player, try and add him now
+    if(anClientID != mTnTApp.mClientID)
+    {
+      AddPlayer(anClientID, anClientAddr, anClientPort, anAssetID);
     }
   }
 }
@@ -353,13 +356,13 @@ void NetworkState::SendJoinRequest(void)
   sf::Packet anJoin;
 
   // Prepare the Join request packet
-  anJoin << mClientID;    // Start with our personal client ID value
+  anJoin << mTnTApp.mClientID;    // Start with our personal client ID value
   anJoin << sf::IpAddress::getLocalAddress().toString(); // Local IP Address
-  anJoin << mClient.getLocalPort(); // Local port that was randomly assigned to us
+  anJoin << mTnTApp.mClient.getLocalPort(); // Local port that was randomly assigned to us
   anJoin << mPlayerImage; // Add the player image we have chosen for ourselves
 
   // Send a broadcast packet to everyone about ourselves
-  mClient.send(anJoin, sf::IpAddress::Broadcast, GAME_SERVER_PORT);
+  mTnTApp.mClient.send(anJoin, sf::IpAddress::Broadcast, GAME_SERVER_PORT);
 }
 
 void NetworkState::ProcessMessages(void)
@@ -372,7 +375,7 @@ void NetworkState::ProcessMessages(void)
   unsigned short anSenderPort;
 
   // Process the messages from our server
-  sf::Socket::Status anResult = mClient.receive(anData, anSenderAddr, anSenderPort);
+  sf::Socket::Status anResult = mTnTApp.mClient.receive(anData, anSenderAddr, anSenderPort);
 
   // Did we get a reply? was it from our sever?
   if(anResult == sf::Socket::Done && anSenderPort == GAME_SERVER_PORT)
@@ -392,12 +395,8 @@ void NetworkState::ProcessMessages(void)
     anData >> anClientPort;
     anData >> anAssetID;
 
-    // Only add the client if its not ourselves
-    if(anClientID != mClientID)
-    {
-      // Add network player to our list of players
-      AddPlayer(anClientID, anClientAddr, anClientPort, anAssetID);
-    }
+    // Add network player to our list of players
+    AddPlayer(anClientID, anClientAddr, anClientPort, anAssetID);
   }
 }
 

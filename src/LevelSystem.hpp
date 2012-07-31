@@ -6,6 +6,7 @@
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 #ifndef LEVEL_SYSTEM_HPP_INCLUDED
 #define LEVEL_SYSTEM_HPP_INCLUDED
@@ -196,7 +197,8 @@ class LevelSystem : public GQE::ISystem
       TilesetStage = 1, ///< The tileset image loading stage
       TileStage    = 2, ///< The tile stage
       ObjectStage  = 3, ///< The Object layer stage
-      CleanupStage = 4  ///< The Cleanup stage
+      WaitingStage = 4, ///< The Waiting stage before the game begins
+      CleanupStage = 5  ///< The Cleanup stage as the game begins
     };
 
     // Struct to hold all values needed to load a map
@@ -316,10 +318,18 @@ class LevelSystem : public GQE::ISystem
 
     /**
      * LoadStage4 will be called by the Draw method to perform stage 4 of the
-     * loading process. This stage is responsible for all cleanup after the
-     * previous stages have been completed.
+     * loading process. This stage is responsible for informing all of the other
+     * players that we have finished loading our map and waiting for them to
+     * complete loading their maps.
      */
     void LoadStage4(void);
+
+    /**
+     * LoadStage5 will be called by the Draw method to perform stage 5 of the
+     * loading process. This stage is responsible for enabling the game to
+     * begin since all players have finally loaded their maps.
+     */
+    void LoadStage5(void);
 
     /**
      * LoadProperties is responsible for adding each property as a property of

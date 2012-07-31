@@ -5,13 +5,18 @@
  * @file src/NetworkSystem.cpp
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 #include "NetworkSystem.hpp"
 #include <SFML/Network.hpp>
 #include <GQE/Entity/classes/Instance.hpp>
+#include "TnTApp.hpp"
 
-NetworkSystem::NetworkSystem(GQE::IApp& theApp):
-  ISystem("NetworkSystem",theApp)
+NetworkSystem::NetworkSystem(TnTApp& theApp):
+  ISystem("NetworkSystem", theApp),
+  mUpdateStep(ActionWait),
+  mGameTick(0),
+  mClient(theApp.mClient)
 {
 }
 
@@ -25,8 +30,10 @@ void NetworkSystem::AddProperties(GQE::IEntity* theEntity)
   theEntity->mProperties.Add<GQE::Uint32>("uNetworkID", 0);
   theEntity->mProperties.Add<sf::IpAddress>("sNetworkAddr", sf::IpAddress(sf::IpAddress::LocalHost));
   theEntity->mProperties.Add<unsigned short>("uNetworkPort", 0);
+  theEntity->mProperties.Add<float>("fSpeed", 4.0f);
   theEntity->mProperties.Add<GQE::Uint32>("uKeyState", 0);
   theEntity->mProperties.Add<bool>("bKeyState", false);
+  theEntity->mProperties.Add<sf::Vector2f>("vVelocity",sf::Vector2f(0,0));
 }
 
 void NetworkSystem::HandleInit(GQE::IEntity* theEntity)
@@ -39,62 +46,213 @@ void NetworkSystem::HandleEvents(sf::Event theEvent)
 
 void NetworkSystem::UpdateFixed()
 {
-  GQE::Uint32 anClientID = 0;
-  std::string anClientAddr;
-  unsigned short anClientPort = 0;
-  GQE::Uint32 anKeyState = 0;
+  // Did someone initiate loading a new level?
+  bool anLoading = false;
 
-  // Search through each z-order map to find theEntityID provided
+  // How many players have committed keyboard state information?
+  unsigned int anCount = 0;
+  unsigned int anTotal = 0;
+
+  // Iterator for looping through each IEntity class
   std::map<const GQE::Uint32, std::deque<GQE::IEntity*> >::iterator anIter;
-  anIter = mEntities.begin();
-  while(anIter != mEntities.end())
+
+  // Which step are we on right now for UpdateFixed?
+  switch(mUpdateStep)
   {
-    std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
-    while(anQueue != anIter->second.end())
+  case ActionWait:
+    anIter = mEntities.begin();
+    while(anIter != mEntities.end())
     {
-      // Get the IEntity address first
-      GQE::IEntity* anEntity = *anQueue;
-
-      // Increment the IEntity iterator second
-      anQueue++;
-
-      // Are we a local player who needs to send our keyboard state?
-      if(anEntity->mProperties.Get<bool>("bNetworkLocal"))
+      std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+      while(anQueue != anIter->second.end())
       {
-        // Process this entity as a local entity (send its uKeyState property)
-        ProcessNetworkLocal(anEntity);
-        // Get our local ID information to send to the other players
-        anClientID = anEntity->mProperties.Get<GQE::Uint32>("uNetworkID");
-        // Get our local IP Address to send to other players
-        anClientAddr = anEntity->mProperties.Get<sf::IpAddress>("sNetworkAddr").toString();
-        // Get our local port to send to other players
-        anClientPort = anEntity->mProperties.Get<unsigned short>("uNetworkPort");
-        // Get our keystate information to send to the other players
-        anKeyState = anEntity->mProperties.Get<GQE::Uint32>("uKeyState");
-      }
-      else
+        // Get the IEntity address first
+        GQE::IEntity* anEntity = *anQueue;
+
+        // Increment the IEntity iterator second
+        anQueue++;
+
+        // Are we a local player who needs to send our keyboard state?
+        if(anEntity->mProperties.Get<bool>("bNetworkLocal"))
+        {
+          // Send local input for this local player to other remote players
+          SendLocalInput(anEntity);
+        }
+        else
+        {
+          // See if there is any remote input information to receive
+          ReceiveRemoteInput();
+        }
+        
+        // Has this player finished loading their level?
+        if(anEntity->mProperties.Get<bool>("bLoading") == false)
+        {
+          // Increment our committed count number
+          anCount++;
+        }
+
+        // Increment our total committed members count
+        anTotal++;
+      } // while(anQueue != anIter->second.end())
+      // Increment map iterator
+      anIter++;
+    } //while(anIter != mEntities.end())
+
+    ILOG() << "NetworkSystem::ActionWait gt=" << mGameTick
+      << " count=" << anCount << " total=" << anTotal << std::endl;
+    // Have we received all committed members, then act on commitment
+    if(anCount == anTotal)
+    {
+      // Switch to next step
+      mUpdateStep = ActionCommit;
+    }
+    break;
+  case ActionCommit: // Gather local keystate information
+    // Increment our game tick value
+    mGameTick++;
+
+    ILOG() << "NetworkSystem::ActionCommit gt=" << mGameTick << std::endl;
+    anIter = mEntities.begin();
+    while(anIter != mEntities.end())
+    {
+      std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+      while(anQueue != anIter->second.end())
       {
-        // Packet for sending our local players KeyState information to this network player
-        sf::Packet anData;
+        // Get the IEntity address first
+        GQE::IEntity* anEntity = *anQueue;
 
-        // Process this entity as a network entity
-        ProcessNetworkInput(anEntity);
+        // Increment the IEntity iterator second
+        anQueue++;
 
-        // Prepare the packet using the information contained in this IEntity
-        anData << anClientID;
-        anData << anClientAddr;
-        anData << anClientPort;
-        anData << anKeyState;
+        // Are we a local player who needs to get our current keyboard state?
+        if(anEntity->mProperties.Get<bool>("bNetworkLocal"))
+        {
+          // Save previous KeyState information
+          anEntity->mProperties.Set<GQE::Uint32>("uKeyStatePrevious", 
+            anEntity->mProperties.Get<GQE::Uint32>("uKeyState"));
 
-        // Now send our local players keystate to this network client
-        mClient.send(anData, anEntity->mProperties.Get<sf::IpAddress>("sNetworkAddr"),
-          anEntity->mProperties.Get<unsigned short>("uNetworkPort"));
-      }
-    } // while(anQueue != anIter->second.end())
+          // Save previous Loading information
+          anEntity->mProperties.Set<bool>("bLoadingPrevious", 
+            anEntity->mProperties.Get<bool>("bLoading"));
 
-    // Increment map iterator
-    anIter++;
-  } //while(anIter != mEntities.end())
+          // Gather input for this local player
+          UpdateLocalInput(anEntity);
+        }
+      } // while(anQueue != anIter->second.end())
+      // Increment map iterator
+      anIter++;
+    } //while(anIter != mEntities.end())
+
+    // Switch to next step
+    mUpdateStep = ActionBroadcast;
+    break;
+  case ActionBroadcast: // Send local and receive remote keystate information
+    anIter = mEntities.begin();
+    while(anIter != mEntities.end())
+    {
+      std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+      while(anQueue != anIter->second.end())
+      {
+        // Get the IEntity address first
+        GQE::IEntity* anEntity = *anQueue;
+
+        // Increment the IEntity iterator second
+        anQueue++;
+
+        // Are we a local player who needs to send our keyboard state?
+        if(anEntity->mProperties.Get<bool>("bNetworkLocal"))
+        {
+          // Send local input for this local player to other remote players
+          SendLocalInput(anEntity);
+        }
+        else
+        {
+          // See if there is any remote input information to receive
+          ReceiveRemoteInput();
+        }
+        
+        // Does this player have a committed keyboard state?
+        if(anEntity->mProperties.Get<bool>("bKeyState"))
+        {
+          // Increment our committed count number
+          anCount++;
+        }
+
+        // Has this player started loading a new level?
+        if(anEntity->mProperties.Get<bool>("bLoading"))
+        {
+          anLoading = true;
+        }
+
+        // Increment our total committed members count
+        anTotal++;
+      } // while(anQueue != anIter->second.end())
+      // Increment map iterator
+      anIter++;
+    } //while(anIter != mEntities.end())
+
+    ILOG() << "NetworkSystem::ActionBroadcast count=" << anCount << " total=" << anTotal << std::endl;
+    // Have we received all committed members, then act on commitment
+    if(anCount == anTotal && anLoading == false)
+    {
+      // Switch to next step
+      mUpdateStep = ActionVelocity;
+    }
+    else if(anLoading == true)
+    {
+      // Switch to wait step
+      mUpdateStep = ActionWait;
+    }
+    break;
+  case ActionVelocity: // Use keystate information received to generate velocity information
+    ILOG() << "NetworkSystem::ActionVelocity gt=" << mGameTick << std::endl;
+    anIter = mEntities.begin();
+    while(anIter != mEntities.end())
+    {
+      std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+      while(anQueue != anIter->second.end())
+      {
+        // Get the IEntity address first
+        GQE::IEntity* anEntity = *anQueue;
+
+        // Increment the IEntity iterator second
+        anQueue++;
+
+        // Process the input keystate information for this Entity
+        ProcessInput(anEntity);
+      } // while(anQueue != anIter->second.end())
+      // Increment map iterator
+      anIter++;
+    } //while(anIter != mEntities.end())
+
+    // Switch to next step
+    mUpdateStep = ActionPosition;
+    break;
+  case ActionPosition: // Use velocity information sanitized by LevelSystem to move positions
+    ILOG() << "NetworkSystem::ActionPosition gt=" << mGameTick << std::endl;
+    anIter = mEntities.begin();
+    while(anIter != mEntities.end())
+    {
+      std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+      while(anQueue != anIter->second.end())
+      {
+        // Get the IEntity address first
+        GQE::IEntity* anEntity = *anQueue;
+
+        // Increment the IEntity iterator second
+        anQueue++;
+
+        // Process the input keystate information for this Entity
+        ProcessVelocity(anEntity);
+      } // while(anQueue != anIter->second.end())
+      // Increment map iterator
+      anIter++;
+    } //while(anIter != mEntities.end())
+
+    // Switch to first step
+    mUpdateStep = ActionCommit;
+    break;
+  }
 }
 
 void NetworkSystem::UpdateVariable(float theElaspedTime)
@@ -109,65 +267,7 @@ void NetworkSystem::HandleCleanup(GQE::IEntity* theEntity)
 {
 }
 
-void NetworkSystem::ProcessNetworkLocal(GQE::IEntity* theEntity)
-{
-  GQE::Uint32 anKeyState = theEntity->mProperties.Get<GQE::Uint32>("uKeyState");
-
-  // See if our client socket has been opened yet, if not bind the port
-  sf::Socket::Status anResult = mClient.bind(theEntity->mProperties.Get<unsigned short>("uNetworkPort"));
-  if(anResult == sf::Socket::Done)
-  {
-    mClient.setBlocking(false);
-  }
-
-  // Attempt to receive packets first for other players
-  do {
-    sf::Packet anData;
-    sf::IpAddress anRemoteAddr;
-    unsigned short anRemotePort;
-    anResult = mClient.receive(anData, anRemoteAddr, anRemotePort);
-    // Process packet if one was received
-    if(anResult == sf::Socket::Done)
-    {
-      GQE::Uint32 anClientID;
-      std::string anClientAddr;
-      unsigned short anClientPort;
-      GQE::Uint32 anClientKeyState;
-      anData >> anClientID;
-      anData >> anClientAddr;
-      anData >> anClientPort;
-      anData >> anClientKeyState;
-      
-      // Search through each z-order map to find theEntityID provided
-      std::map<const GQE::Uint32, std::deque<GQE::IEntity*> >::iterator anIter;
-      anIter = mEntities.begin();
-      while(anIter != mEntities.end())
-      {
-        std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
-        while(anQueue != anIter->second.end())
-        {
-          // Get the IEntity address first
-          GQE::IEntity* anEntity = *anQueue;
-
-          // Increment the IEntity iterator second
-          anQueue++;
-
-          // Is this the player we just received a packet for? then update its keystate information
-          if(anEntity->mProperties.Get<GQE::Uint32>("uNetworkID") == anClientID)
-          {
-            anEntity->mProperties.Set<GQE::Uint32>("uKeyState", anClientKeyState);
-            anEntity->mProperties.Set<bool>("bKeyState", true);
-          }
-        } // while(anQueue != anIter->second.end())
-
-        // Increment map iterator
-        anIter++;
-      } //while(anIter != mEntities.end())
-    }
-  } while(anResult == sf::Socket::Done);
-}
-
-void NetworkSystem::ProcessNetworkInput(GQE::IEntity* theEntity)
+void NetworkSystem::ProcessInput(GQE::IEntity* theEntity)
 {
   if(theEntity->mProperties.Get<bool>("bKeyState"))
   {
@@ -248,9 +348,249 @@ void NetworkSystem::ProcessNetworkInput(GQE::IEntity* theEntity)
     // Now update the control system properties for this IEntity
     theEntity->mProperties.Set<sf::Vector2f>("vVelocity", anVelocity);
     theEntity->mProperties.Set<sf::IntRect>("rSpriteRect", anSpriteRect);
+
     // Keystate was processed and is no longer valid
     theEntity->mProperties.Set<bool>("bKeyState", false);
   }
+  else
+  {
+    WLOG() << "NetworkSystem::ProcessInput() missing input for id=" <<
+      theEntity->mProperties.Get<GQE::Uint32>("uNetworkID") << std::endl;
+  }
+}
+
+void NetworkSystem::ProcessVelocity(GQE::IEntity* theEntity)
+{
+  // Get the LevelSystem properties
+  sf::Vector2f anPosition = theEntity->mProperties.Get<sf::Vector2f>("vPosition");
+
+  // Get the NetworkSystem properties
+  sf::Vector2f anVelocity = theEntity->mProperties.Get<sf::Vector2f>("vVelocity");
+
+  // Now update the current movement properties
+  anPosition += anVelocity;
+
+  // Now update the RenderSystem properties of this IEntity class
+  theEntity->mProperties.Set<sf::Vector2f>("vPosition", anPosition);
+}
+
+void NetworkSystem::ReceiveRemoteInput(void)
+{
+  sf::Socket::Status anResult = sf::Socket::Error;
+
+  // Attempt to receive packets from remote players
+  do {
+    sf::Packet anData;
+    sf::IpAddress anRemoteAddr;
+    unsigned short anRemotePort;
+  
+    // See if a packet can be received on our client socket
+    anResult = mClient.receive(anData, anRemoteAddr, anRemotePort);
+
+    // Process packet if one was received
+    if(anResult == sf::Socket::Done)
+    {
+      unsigned int anCurGameTick;
+      GQE::Uint32 anID;
+      std::string anAddr;
+      unsigned short anPort;
+      GQE::Uint32 anCurKeyState;
+      bool anCurLoading;
+      unsigned int anPrevGameTick;
+      GQE::Uint32 anPrevKeyState;
+      bool anPrevLoading;
+      
+      // First receive our current game tick value
+      anData >> anCurGameTick;
+      // Next receive the remote client ID value
+      anData >> anID;
+      // Next receive the remote client IP Address
+      anData >> anAddr;
+      // Next receive the remote client port
+      anData >> anPort;
+      // Next receive the remote client keystate information
+      anData >> anCurKeyState;
+      // Next receive the remote client loading state
+      anData >> anCurLoading;
+      // First receive our game tick value
+      anData >> anPrevGameTick;
+      // Next receive the remote client keystate information
+      anData >> anPrevKeyState;
+      // Next receive the remote client loading state
+      anData >> anPrevLoading;
+      
+      // Is this the game tick we are looking for?
+      if(anCurGameTick == mGameTick)
+      {
+        // Search through each z-order map to find theEntity this belongs to
+        std::map<const GQE::Uint32, std::deque<GQE::IEntity*> >::iterator anIter;
+        anIter = mEntities.begin();
+        while(anIter != mEntities.end())
+        {
+          std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+          while(anQueue != anIter->second.end())
+          {
+            // Get the IEntity address first
+            GQE::IEntity* anEntity = *anQueue;
+
+            // Increment the IEntity iterator second
+            anQueue++;
+
+            // Is this the player we just received a packet for? then update its keystate information
+            if(anEntity->mProperties.Get<GQE::Uint32>("uNetworkID") == anID)
+            {
+              // Make note of the keystate information
+              anEntity->mProperties.Set<GQE::Uint32>("uKeyState", anCurKeyState);
+              // Let the system know this player has already provided keystate information
+              anEntity->mProperties.Set<bool>("bKeyState", true);
+              // Let the system know if this player is currently loading still
+              anEntity->mProperties.Set<bool>("bLoading", anCurLoading);
+            }
+          } // while(anQueue != anIter->second.end())
+
+          // Increment map iterator
+          anIter++;
+        } //while(anIter != mEntities.end())
+      } //if(anCurGameTick == mGameTick)
+      else if(anPrevGameTick == mGameTick)
+      {
+        // Search through each z-order map to find theEntity this belongs to
+        std::map<const GQE::Uint32, std::deque<GQE::IEntity*> >::iterator anIter;
+        anIter = mEntities.begin();
+        while(anIter != mEntities.end())
+        {
+          std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+          while(anQueue != anIter->second.end())
+          {
+            // Get the IEntity address first
+            GQE::IEntity* anEntity = *anQueue;
+
+            // Increment the IEntity iterator second
+            anQueue++;
+
+            // Is this the player we just received a packet for? then update its keystate information
+            if(anEntity->mProperties.Get<GQE::Uint32>("uNetworkID") == anID)
+            {
+              // Make note of the keystate information
+              anEntity->mProperties.Set<GQE::Uint32>("uKeyState", anPrevKeyState);
+              // Let the system know this player has already provided keystate information
+              anEntity->mProperties.Set<bool>("bKeyState", true);
+              // Let the system know if this player is currently loading still
+              anEntity->mProperties.Set<bool>("bLoading", anPrevLoading);
+            }
+          } // while(anQueue != anIter->second.end())
+
+          // Increment map iterator
+          anIter++;
+        } //while(anIter != mEntities.end())
+      }
+    } //if(anResult == sf::Socket::Done)
+  } while(anResult == sf::Socket::Done);
+}
+
+void NetworkSystem::SendLocalInput(GQE::IEntity* theEntity)
+{
+  // Packet for sending our local players KeyState information to this network player
+  sf::Packet anData;
+
+  // Prepare a packet for this local player to send to all remote players
+  // Start with current game tick number
+  anData << mGameTick;
+  // Add Network ID of the local player
+  anData << theEntity->mProperties.Get<GQE::Uint32>("uNetworkID");
+  // Add IP Address of the local player
+  anData << theEntity->mProperties.Get<sf::IpAddress>("sNetworkAddr").toString();
+  // Add port number of the local player
+  anData << theEntity->mProperties.Get<unsigned short>("uNetworkPort");
+  // Add the current uKeyState property
+  anData << theEntity->mProperties.Get<GQE::Uint32>("uKeyState");
+  // Add the current bLoading property
+  anData << theEntity->mProperties.Get<bool>("bLoading");
+  // Add the previous game tick number
+  anData << mGameTick - 1;
+  // Add the previous uKeyState property
+  anData << theEntity->mProperties.Get<GQE::Uint32>("uKeyStatePrevious");
+  // Add the previous bLoading property
+  anData << theEntity->mProperties.Get<bool>("bLoadingPrevious");
+
+  // The iterator to use for each z-ordered deque of IEntity classes
+  std::map<const GQE::Uint32, std::deque<GQE::IEntity*> >::iterator anIter;
+  
+  // Now loop through and send this to each remote player
+  anIter = mEntities.begin();
+  while(anIter != mEntities.end())
+  {
+    std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+    while(anQueue != anIter->second.end())
+    {
+      // Get the IEntity address first
+      GQE::IEntity* anEntity = *anQueue;
+
+      // Increment the IEntity iterator second
+      anQueue++;
+
+      // If this is us, just move on
+      if(anEntity == theEntity)
+        continue;
+
+      // Are we a local player who needs to send our keyboard state?
+      if(anEntity->mProperties.Get<bool>("bNetworkLocal") == false)
+      {
+        // Now send our local players keystate to this network client
+        mClient.send(anData, anEntity->mProperties.Get<sf::IpAddress>("sNetworkAddr"),
+          anEntity->mProperties.Get<unsigned short>("uNetworkPort"));
+      }
+    } // while(anQueue != anIter->second.end())
+
+    // Increment map iterator
+    anIter++;
+  } //while(anIter != mEntities.end())
+}
+
+void NetworkSystem::UpdateLocalInput(GQE::IEntity* theEntity)
+{
+  // Start with no keys being pressed
+  GQE::Uint32 anKeyState = 0;
+
+#if SFML_VERSION_MAJOR<2
+  if(mApp.mInput.IsKeyDown(sf::Key::Left))
+  {
+    anKeyState |= KEY_LEFT;
+  }
+  else if(mApp.mInput.IsKeyDown(sf::Key::Right))
+  {
+    anKeyState |= KEY_RIGHT;
+  }
+  if(mApp.mInput.IsKeyDown(sf::Key::Up))
+  {
+    anKeyState |= KEY_UP;
+  }
+  else if(mApp.mInput.IsKeyDown(sf::Key::Down))
+  {
+    anKeyState |= KEY_DOWN;
+  }
+#else
+  if(sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+  {
+    anKeyState |= KEY_LEFT;
+  }
+  else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+  {
+    anKeyState |= KEY_RIGHT;
+  }
+  if(sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+  {
+    anKeyState |= KEY_UP;
+  }
+  else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+  {
+    anKeyState |= KEY_DOWN;
+  }
+#endif
+
+  // Update the control system properties for this local Entity
+  theEntity->mProperties.Set<GQE::Uint32>("uKeyState", anKeyState);
+  theEntity->mProperties.Set<bool>("bKeyState", true);
 }
 
 /**
