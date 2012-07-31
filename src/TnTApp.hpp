@@ -5,16 +5,25 @@
  * @file src/TnTApp.hpp
  * @author Ryan Lindeman
  * @date 20120707 - Initial Release
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 #ifndef   T_N_T_APP_HPP_INCLUDED
 #define   T_N_T_APP_HPP_INCLUDED
 
+#include <SFML/Network.hpp>
 #include <GQE/Core/interfaces/IApp.hpp>
 
 /// Provides the core game loop algorithm for all game engines.
 class TnTApp : public GQE::IApp
 {
   public:
+    // Variables
+    /////////////////////////////////////////////////////////////////////////
+    /// The client socket for this application
+    sf::UdpSocket mClient;
+    /// Randomly selected client ID value for this client
+    GQE::Uint32   mClientID;
+
     /**
      * TnTApp constructor
      * @param[in] theTitle is the title of the window

@@ -4,6 +4,7 @@
  * @file src/NetworkState.hpp
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 
 #ifndef   NETWORK_STATE_HPP_INCLUDED
@@ -18,6 +19,9 @@
 #include <GQE/Entity/systems/RenderSystem.hpp>
 #include <GQE/Entity/classes/Prototype.hpp>
 
+// Forward declare our TnTApp class
+class TnTApp;
+
 class NetworkState : public GQE::IState
 {
   public:
@@ -26,7 +30,7 @@ class NetworkState : public GQE::IState
      * @param[in] theApp is an address to the App class.
      * @param[in] theCharacter is the IEntity for the current player
      */
-    NetworkState(GQE::IApp& theApp);
+    NetworkState(TnTApp& theApp);
 
     /**
      * NetworkState deconstructor
@@ -85,13 +89,16 @@ class NetworkState : public GQE::IState
       unsigned short   port;
       GQE::typeAssetID assetID;
     } typeClientInfo;
-
+    /// The TnTApp address used by this state
+    TnTApp&                    mTnTApp;
     /// The animation system for our players and treasures
     GQE::AnimationSystem       mAnimationSystem;
     /// The render system for handling rendering of tiles, players, etc
     GQE::RenderSystem          mRenderSystem;
     /// The prototype system for creating players
     GQE::Prototype             mPlayer;
+    /// The list of players that will be in our game
+    std::map<const GQE::Uint32, typeClientInfo> mPlayers;
     /// The player image for the local player
     GQE::typeAssetID           mPlayerImage;
     /// The container to hold each players images as they join the game
@@ -105,16 +112,10 @@ class NetworkState : public GQE::IState
     /// The background image giving instructions on waiting, joining, and starting the game
     GQE::ImageAsset            mBackground;
 
-    /// The client socket which will be randomly assigned a port address
-    sf::UdpSocket              mClient;
-    /// Randomly selected client ID value for this client
-    GQE::Uint32                mClientID;
     /// True if the server socket is bound and active
     bool                       mServerActive;
     /// The server socket if no one on this PC has already bound it
     sf::UdpSocket              mServer;
-    /// The list of clients that have been discovered
-    std::map<const GQE::Uint32, typeClientInfo> mServerClients;
 
     /**
      * AddPlayer is responsible for adding each player as they join the network
@@ -125,7 +126,7 @@ class NetworkState : public GQE::IState
      * @param[in] thePort is the IP Address port of the new network player
      * @param[in] theAssetID to use to represent this network player in the game
      */
-    void AddPlayer(GQE::Uint32 theID, std::string theAddress,
+    void AddPlayer(GQE::Uint32 theID, sf::IpAddress theAddress,
       unsigned short thePort, GQE::typeAssetID theAssetID);
 
     /**

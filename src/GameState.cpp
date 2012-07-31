@@ -5,6 +5,7 @@
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 #include "GameState.hpp"
 #include <SFML/Network.hpp>
@@ -14,12 +15,11 @@
 #include <GQE/Entity/classes/Prototype.hpp>
 #include <GQE/Entity/classes/Instance.hpp>
 #include <GQE/Entity/classes/PrototypeManager.hpp>
+#include "TnTApp.hpp"
 
-GameState::GameState(GQE::IApp& theApp) :
+GameState::GameState(TnTApp& theApp) :
   GQE::IState("Game",theApp),
   mAnimationSystem(theApp),
-  mControlSystem(theApp),
-  mMovementSystem(theApp),
   mLevelSystem(theApp, &mAnimationSystem,
     "resources/Level0.tmx",
     "resources/images/loading.png",
@@ -42,13 +42,16 @@ void GameState::DoInit(void)
 {
   // First call our base class implementation
   IState::DoInit();
-  //srand(time((time_t*)NULL));
+
+  // Set Update Rate to 60.0
+  mApp.SetUpdateRate(60.0f);
+
+  // Enable debug statistics for FPS and UPS
   mApp.mStatManager.SetShow(true);
 
   // Register all ISystems for the Player prototype
   mPlayer.AddSystem(&mAnimationSystem);
   mPlayer.AddSystem(&mLevelSystem);
-  mPlayer.AddSystem(&mMovementSystem);
   mPlayer.AddSystem(&mNetworkSystem);
 
   // Get the number of players for the current game
@@ -143,15 +146,6 @@ void GameState::DoInit(void)
 
           // We are a local player
           anInstance->mProperties.Set<bool>("bNetworkLocal", true);
-
-          // Add this instance to our ControlSystem
-          mControlSystem.AddEntity(anInstance);
-        }
-        else
-        {
-          // Add fSpeed for network players since they aren't registered with
-          // ControlSystem
-          anInstance->mProperties.Add<float>("fSpeed", 4.0f);
         }
       }
       else
@@ -174,20 +168,9 @@ void GameState::ReInit()
 
 void GameState::UpdateFixed(void)
 {
-  // ControlSystem should always come first
-  mControlSystem.UpdateFixed();
-
-  // NetworkSystem should be called after ControlSystem but before LevelSystem
   mNetworkSystem.UpdateFixed();
-
-  // AnimationSystem works best after ControlSystem
   mAnimationSystem.UpdateFixed();
-
-  // LevelSystem should always come before MovementSystem and after ControlSystem
   mLevelSystem.UpdateFixed();
-
-  // MovementSystem should always come after LevelSystem to allow for Wall collision detection
-  mMovementSystem.UpdateFixed();
 }
 
 void GameState::UpdateVariable(float theElapsedTime)

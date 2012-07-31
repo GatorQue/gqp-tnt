@@ -6,6 +6,7 @@
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 #include "LevelSystem.hpp"
 #include <SFML/Graphics.hpp>
@@ -113,6 +114,8 @@ void LevelSystem::AddProperties(GQE::IEntity* theEntity)
   theEntity->mProperties.Add<sf::Vector2u>("wScreen", sf::Vector2u(0,0));
   theEntity->mProperties.Add<sf::Sprite>("Sprite", sf::Sprite());
   theEntity->mProperties.Add<bool>("bVisible", false);
+  theEntity->mProperties.Add<bool>("bLoading", true);
+  theEntity->mProperties.Add<bool>("bLoadingPrevious", false);
 #if SFML_VERSION_MAJOR<2
   theEntity->mProperties.Add<sf::IntRect>("rBoundingBox",
     sf::IntRect(16*mTileScale.x,32*mTileScale.y,48*mTileScale.x,32*mTileScale.y));
@@ -214,11 +217,14 @@ void LevelSystem::Draw()
         case ObjectStage:
           LoadStage3();
           break;
+        case WaitingStage:
+          LoadStage4();
+          break;
         case UnknownStage:
         default:
           // Error, no such stage!?
         case CleanupStage:
-          LoadStage4();
+          LoadStage5();
           break;
       }
     }
@@ -289,6 +295,7 @@ void LevelSystem::Draw()
           mApp.mWindow.draw(anScore);
 #endif
 
+          /*
           // START DEBUG: Draw our players bounding box
           anPosition.x += anBoundingBox.left;
           anPosition.y += anBoundingBox.top;
@@ -301,6 +308,7 @@ void LevelSystem::Draw()
 
           mApp.mWindow.draw(anBar);
           // END DEBUG: Draw our players bounding box
+          */
         }
       } // while(anQueue != anIter->second.end())
 
@@ -382,6 +390,9 @@ bool LevelSystem::LoadMap(const GQE::typeAssetID theMapFilename,
 
           // Increment the IEntity iterator second
           anQueue++;
+
+          // Set our bLoading property to true
+          anEntity->mProperties.Set<bool>("bLoading", true);
 
           // Load the map properties into each registered IEntity class
           LoadProperties(mLoader->map.GetProperties().GetList(), anEntity);
@@ -1204,38 +1215,27 @@ void LevelSystem::LoadStage3(void)
         {
           // Reset group value and proceed to LoadStage5
           mLoader->group = 0;
-          mLoader->stage = CleanupStage;
+          mLoader->stage = WaitingStage;
         }
       }
     }
     else
     {
       // Move on to next stage, no object groups available
-      mLoader->stage = CleanupStage;
+      mLoader->stage = WaitingStage;
     }
   } // if(mLoader != NULL)
 }
 
 void LevelSystem::LoadStage4(void)
 {
+  // How many players have committed keyboard state information?
+  unsigned int anCount = 0;
+  unsigned int anTotal = 0;
+
   // Make sure a load is actually in process
   if(mLoader != NULL)
   {
-    // Did we have a previous tileset in use? then delete it now
-    if(mTilesets != NULL)
-    {
-      // By deleting it here we can refrain from reloading identical tilesets
-      // already in memory
-      delete[] mTilesets;
-    }
-
-    // Make note of the new mTilesets
-    mTilesets = mLoader->tilesets;
-
-    // LoadScreen now
-    // TODO: This won't work with spawn points, fix it!
-    LoadScreen(mScreen);
-
     // Reset all our registered IEntity properties
     //ResetProperties(true);
 
@@ -1259,6 +1259,75 @@ void LevelSystem::LoadStage4(void)
           // Set our LevelSystem properties
           anEntity->mProperties.Set<std::string>("sLevelMap", mMapFilename);
           anEntity->mProperties.Set<std::string>("sLevelLoading", mLoadingFilename);
+
+          // Set our bLoading property to false
+          anEntity->mProperties.Set<bool>("bLoading", false);
+        }
+
+        // Has this player finished loading their level?
+        if(anEntity->mProperties.Get<bool>("bLoading") == false)
+        {
+          // Increment our committed count number
+          anCount++;
+        }
+
+        // Increment our total committed members count
+        anTotal++;
+      } // while(anQueue != anIter->second.end())
+
+      // Increment map iterator
+      anIter++;
+    } //while(anIter != mEntities.end())
+
+    if(anCount == anTotal)
+    {
+      // LoadScreen now
+      // TODO: This won't work with spawn points, fix it!
+      LoadScreen(mScreen);
+
+      // Move on to next stage, everyone has loaded their maps
+      mLoader->stage = CleanupStage;
+    }
+  } // if(mLoader != NULL)
+}
+
+void LevelSystem::LoadStage5(void)
+{
+  // Make sure a load is actually in process
+  if(mLoader != NULL)
+  {
+    // Did we have a previous tileset in use? then delete it now
+    if(mTilesets != NULL)
+    {
+      // By deleting it here we can refrain from reloading identical tilesets
+      // already in memory
+      delete[] mTilesets;
+    }
+
+    // Make note of the new mTilesets
+    mTilesets = mLoader->tilesets;
+
+    // Reset all our registered IEntity properties
+    //ResetProperties(true);
+
+    // Make each player visible now
+    std::map<const GQE::Uint32, std::deque<GQE::IEntity*> >::iterator anIter;
+    anIter = mEntities.begin();
+    while(anIter != mEntities.end())
+    {
+      std::deque<GQE::IEntity*>::iterator anQueue = anIter->second.begin();
+      while(anQueue != anIter->second.end())
+      {
+        // Get the IEntity address first
+        GQE::IEntity* anEntity = *anQueue;
+
+        // Increment the IEntity iterator second
+        anQueue++;
+
+        // Player is local
+        if(anEntity->mProperties.Get<bool>("bNetworkLocal"))
+        {
+          // Make our player visible
           anEntity->mProperties.Set<bool>("bVisible", true);
         }
         else

@@ -4,6 +4,7 @@
  * @file src/NetworkSystem.hpp
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
+ * @date 20120730 - Improved network synchronization for multiplayer game play
  */
 #ifndef NETWORK_SYSTEM_HPP_INCLUDED
 #define NETWORK_SYSTEM_HPP_INCLUDED
@@ -12,10 +13,13 @@
 #include <GQE/Entity/interfaces/ISystem.hpp>
 #include <GQE/Entity/classes/Prototype.hpp>
 
+// Forward declare the TnTApp class
+class TnTApp;
+
 class NetworkSystem : public GQE::ISystem
 {
   public:
-    NetworkSystem(GQE::IApp& theApp);
+    NetworkSystem(TnTApp& theApp);
 
     virtual ~NetworkSystem();
 
@@ -56,6 +60,15 @@ class NetworkSystem : public GQE::ISystem
      */
     virtual void Draw(void);
   protected:
+    /// Network UpdateFixed processing steps
+    enum UpdateFixedStep {
+      ActionWait      = 0, ///< Wait for other players to finish loading a new level
+      ActionCommit    = 1, ///< Local players commit their keystate information
+      ActionBroadcast = 2, ///< Send local keystate info and get remote keystate info
+      ActionVelocity  = 3, ///< Create velocity values using keystate information
+      ActionPosition  = 4  ///< Use velocity values to cause position changes
+    };
+
     /**
      * HandleInit is called to allow each derived ISystem to perform any
      * initialization steps when a new IEntity is added.
@@ -79,22 +92,55 @@ class NetworkSystem : public GQE::ISystem
     static const unsigned int KEY_RIGHT = 0x00000008; // Right key is being pressed
     static const unsigned int KEY_SPACE = 0x00000010; // Spacebar key is being pressed
     static const unsigned int KEY_ENTER = 0x00000020; // Enter key is being pressed
+    // Variables
+    /////////////////////////////////////////////////////////////////////////
+    /// The current step to use during UpdateFixed
+    UpdateFixedStep mUpdateStep;
+    /// The game tick value incremented every time we act on input
+    unsigned int mGameTick;
     /// The client socket for the local player
-    sf::UdpSocket              mClient;
+    sf::UdpSocket& mClient;
 
     /**
-     * ProcessNetworkLocal is responsible for processing the local keyboard
-     * state and sending it to all other network players.
-     * @param[in] theEntity that represents the local player
+     * ProcessInput is responsible for acting on the uKeyState information
+     * stored in theEntity provided. This centralizes the processing of the
+     * input into a single method (unifies the old ControlSystem with this
+     * NetworkSystem) to better synchronize the multiplayer game scenario.
+     * @param[in] theEntity to process and act on the stored uKeyState info
      */
-    void ProcessNetworkLocal(GQE::IEntity* theEntity);
+    void ProcessInput(GQE::IEntity* theEntity);
 
     /**
-     * ProcessNetworkInput is responsible for processing network packets as if
-     * they originated from the keyboard for the network players.
-     * @param[in] theEntity that represents the network player
+     * ProcessVelocity is responsible for acting on the vVelocity information
+     * stored in theEntity provided. This centralizes the processing of the
+     * velocity information into position information to better synchronize
+     * the positions in a multiplayer game scenario.
+     * @param[in] theEntity to change position information for
      */
-    void ProcessNetworkInput(GQE::IEntity* theEntity);
+    void ProcessVelocity(GQE::IEntity* theEntity);
+
+    /**
+     * ReceiveRemoteInput is responsible for receiving remote entity keystate
+     * information for the current game tick and throwing everything else away.
+     */
+    void ReceiveRemoteInput(void);
+
+    /**
+     * SendLocalInput is responsible for sending the uKeyState information to
+     * every registered remote entity.
+     * @param[in] theEntity that is the local entity to send information about
+     */
+    void SendLocalInput(GQE::IEntity* theEntity);
+
+    /**
+     * UpdateLocalInput is responsible for collecting local keyboard state
+     * information for theEntity provided. This replaces the ControlSystem that
+     * was previously used in version 1.0 and 1.1 of TNT so that all control
+     * can be centralized into one place and provide better synchonization for
+     * multiplayer games.
+     * @param[in] theEntity to collect and store the local keyboard state info
+     */
+    void UpdateLocalInput(GQE::IEntity* theEntity);
 };
 #endif // NETWORK_SYSTEM_HPP_INCLUDED
 
