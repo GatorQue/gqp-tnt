@@ -6,6 +6,7 @@
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120731 - Add sound effects and player spawn points
  */
 #include "NetworkSystem.hpp"
 #include <SFML/Network.hpp>
@@ -30,8 +31,9 @@ void NetworkSystem::AddProperties(GQE::IEntity* theEntity)
   theEntity->mProperties.Add<GQE::Uint32>("uNetworkID", 0);
   theEntity->mProperties.Add<sf::IpAddress>("sNetworkAddr", sf::IpAddress(sf::IpAddress::LocalHost));
   theEntity->mProperties.Add<unsigned short>("uNetworkPort", 0);
-  theEntity->mProperties.Add<float>("fSpeed", 4.0f);
+  theEntity->mProperties.Add<float>("fSpeed", 8.0f);
   theEntity->mProperties.Add<GQE::Uint32>("uKeyState", 0);
+  theEntity->mProperties.Add<GQE::Uint32>("uKeyStatePrevious", 0);
   theEntity->mProperties.Add<bool>("bKeyState", false);
   theEntity->mProperties.Add<sf::Vector2f>("vVelocity",sf::Vector2f(0,0));
 }
@@ -98,8 +100,8 @@ void NetworkSystem::UpdateFixed()
       anIter++;
     } //while(anIter != mEntities.end())
 
-    ILOG() << "NetworkSystem::ActionWait gt=" << mGameTick
-      << " count=" << anCount << " total=" << anTotal << std::endl;
+    //ILOG() << "NetworkSystem::ActionWait gt=" << mGameTick
+    //  << " count=" << anCount << " total=" << anTotal << std::endl;
     // Have we received all committed members, then act on commitment
     if(anCount == anTotal)
     {
@@ -111,7 +113,7 @@ void NetworkSystem::UpdateFixed()
     // Increment our game tick value
     mGameTick++;
 
-    ILOG() << "NetworkSystem::ActionCommit gt=" << mGameTick << std::endl;
+    //ILOG() << "NetworkSystem::ActionCommit gt=" << mGameTick << std::endl;
     anIter = mEntities.begin();
     while(anIter != mEntities.end())
     {
@@ -131,6 +133,14 @@ void NetworkSystem::UpdateFixed()
           anEntity->mProperties.Set<GQE::Uint32>("uKeyStatePrevious", 
             anEntity->mProperties.Get<GQE::Uint32>("uKeyState"));
 
+          // Save previous Position information
+          anEntity->mProperties.Set<sf::Vector2f>("vPositionPrevious", 
+            anEntity->mProperties.Get<sf::Vector2f>("vPosition"));
+
+          // Save previous Screen information
+          anEntity->mProperties.Set<sf::Vector2u>("wScreenPrevious", 
+            anEntity->mProperties.Get<sf::Vector2u>("wScreen"));
+
           // Save previous Loading information
           anEntity->mProperties.Set<bool>("bLoadingPrevious", 
             anEntity->mProperties.Get<bool>("bLoading"));
@@ -138,6 +148,15 @@ void NetworkSystem::UpdateFixed()
           // Gather input for this local player
           UpdateLocalInput(anEntity);
         }
+        //ILOG() << "NetworkState::ActionCommit id=" << anEntity->GetID() << " uKeyState=" << 
+        //  anEntity->mProperties.Get<GQE::Uint32>("uKeyState") << std::endl;
+        //ILOG() << "NetworkState::ActionCommit position(" <<
+        //  anEntity->mProperties.Get<sf::Vector2f>("vPosition").x << ", " <<
+        //  anEntity->mProperties.Get<sf::Vector2f>("vPosition").y << ")" << std::endl;
+        //ILOG() << "NetworkState::ActionCommit screen(" <<
+        //  anEntity->mProperties.Get<sf::Vector2u>("wScreen").x << ", " <<
+        //  anEntity->mProperties.Get<sf::Vector2u>("wScreen").y << ")" << std::endl;
+
       } // while(anQueue != anIter->second.end())
       // Increment map iterator
       anIter++;
@@ -191,7 +210,7 @@ void NetworkSystem::UpdateFixed()
       anIter++;
     } //while(anIter != mEntities.end())
 
-    ILOG() << "NetworkSystem::ActionBroadcast count=" << anCount << " total=" << anTotal << std::endl;
+    //ILOG() << "NetworkSystem::ActionBroadcast count=" << anCount << " total=" << anTotal << std::endl;
     // Have we received all committed members, then act on commitment
     if(anCount == anTotal && anLoading == false)
     {
@@ -205,7 +224,7 @@ void NetworkSystem::UpdateFixed()
     }
     break;
   case ActionVelocity: // Use keystate information received to generate velocity information
-    ILOG() << "NetworkSystem::ActionVelocity gt=" << mGameTick << std::endl;
+    //ILOG() << "NetworkSystem::ActionVelocity gt=" << mGameTick << std::endl;
     anIter = mEntities.begin();
     while(anIter != mEntities.end())
     {
@@ -229,7 +248,7 @@ void NetworkSystem::UpdateFixed()
     mUpdateStep = ActionPosition;
     break;
   case ActionPosition: // Use velocity information sanitized by LevelSystem to move positions
-    ILOG() << "NetworkSystem::ActionPosition gt=" << mGameTick << std::endl;
+    //ILOG() << "NetworkSystem::ActionPosition gt=" << mGameTick << std::endl;
     anIter = mEntities.begin();
     while(anIter != mEntities.end())
     {
@@ -390,14 +409,19 @@ void NetworkSystem::ReceiveRemoteInput(void)
     // Process packet if one was received
     if(anResult == sf::Socket::Done)
     {
+      std::string anTemp;
       unsigned int anCurGameTick;
       GQE::Uint32 anID;
       std::string anAddr;
       unsigned short anPort;
       GQE::Uint32 anCurKeyState;
+      sf::Vector2f anCurPosition;
+      sf::Vector2u anCurScreen;
       bool anCurLoading;
       unsigned int anPrevGameTick;
       GQE::Uint32 anPrevKeyState;
+      sf::Vector2f anPrevPosition;
+      sf::Vector2u anPrevScreen;
       bool anPrevLoading;
       
       // First receive our current game tick value
@@ -410,13 +434,25 @@ void NetworkSystem::ReceiveRemoteInput(void)
       anData >> anPort;
       // Next receive the remote client keystate information
       anData >> anCurKeyState;
+      // Next receive the remote client position information
+      anData >> anTemp;
+      anCurPosition = GQE::ParseVector2f(anTemp, sf::Vector2f(512.0f,384.0f));
+      // Next receive the remote client screen information
+      anData >> anTemp;
+      anCurScreen = GQE::ParseVector2u(anTemp, sf::Vector2u(0,0));
       // Next receive the remote client loading state
       anData >> anCurLoading;
-      // First receive our game tick value
+      // Next receive the remote clients previous game tick value
       anData >> anPrevGameTick;
-      // Next receive the remote client keystate information
+      // Next receive the remote client previous keystate information
       anData >> anPrevKeyState;
-      // Next receive the remote client loading state
+      // Next receive the remote client previous position information
+      anData >> anTemp;
+      anPrevPosition = GQE::ParseVector2f(anTemp, sf::Vector2f(512.0f,384.0f));
+      // Next receive the remote client previous screen information
+      anData >> anTemp;
+      anPrevScreen = GQE::ParseVector2u(anTemp, sf::Vector2u(0,0));
+      // Next receive the remote client previous loading state
       anData >> anPrevLoading;
       
       // Is this the game tick we are looking for?
@@ -443,6 +479,10 @@ void NetworkSystem::ReceiveRemoteInput(void)
               anEntity->mProperties.Set<GQE::Uint32>("uKeyState", anCurKeyState);
               // Let the system know this player has already provided keystate information
               anEntity->mProperties.Set<bool>("bKeyState", true);
+              // Let the system know this players current position information
+              anEntity->mProperties.Set<sf::Vector2f>("vPosition", anCurPosition);
+              // Let the system know this players current screen information
+              anEntity->mProperties.Set<sf::Vector2u>("wScreen", anCurScreen);
               // Let the system know if this player is currently loading still
               anEntity->mProperties.Set<bool>("bLoading", anCurLoading);
             }
@@ -475,6 +515,10 @@ void NetworkSystem::ReceiveRemoteInput(void)
               anEntity->mProperties.Set<GQE::Uint32>("uKeyState", anPrevKeyState);
               // Let the system know this player has already provided keystate information
               anEntity->mProperties.Set<bool>("bKeyState", true);
+              // Let the system know this players previous position information
+              anEntity->mProperties.Set<sf::Vector2f>("vPosition", anPrevPosition);
+              // Let the system know this players previous screen information
+              anEntity->mProperties.Set<sf::Vector2u>("wScreen", anPrevScreen);
               // Let the system know if this player is currently loading still
               anEntity->mProperties.Set<bool>("bLoading", anPrevLoading);
             }
@@ -504,12 +548,20 @@ void NetworkSystem::SendLocalInput(GQE::IEntity* theEntity)
   anData << theEntity->mProperties.Get<unsigned short>("uNetworkPort");
   // Add the current uKeyState property
   anData << theEntity->mProperties.Get<GQE::Uint32>("uKeyState");
+  // Add the current vPosition property
+  anData << GQE::ConvertVector2f(theEntity->mProperties.Get<sf::Vector2f>("vPosition"));
+  // Add the current wScreen property
+  anData << GQE::ConvertVector2u(theEntity->mProperties.Get<sf::Vector2u>("wScreen"));
   // Add the current bLoading property
   anData << theEntity->mProperties.Get<bool>("bLoading");
   // Add the previous game tick number
   anData << mGameTick - 1;
   // Add the previous uKeyState property
   anData << theEntity->mProperties.Get<GQE::Uint32>("uKeyStatePrevious");
+  // Add the current vPosition property
+  anData << GQE::ConvertVector2f(theEntity->mProperties.Get<sf::Vector2f>("vPositionPrevious"));
+  // Add the current wScreen property
+  anData << GQE::ConvertVector2u(theEntity->mProperties.Get<sf::Vector2u>("wScreenPrevious"));
   // Add the previous bLoading property
   anData << theEntity->mProperties.Get<bool>("bLoadingPrevious");
 

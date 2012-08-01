@@ -1,0 +1,127 @@
+Project Name: Traps and Treasures (TnT - its dynamite!)
+
+Project Purpose:
+Create a game that my 4 and 5 year olds can play and submit it as part of the
+LPC competition.
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+Game Description:
+Pick a character, join a LAN game, run around and collect all the treasure
+and treasure chests as you can. (Later on, add traps you can set for other
+players to trigger which might slow you down, warp you away, etc.)
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+Features:
+- Single player, mainly for testing or for fun
+- Multiplayer over the LAN (broadcasts to UDP port 55000 until everyone joins)
+- Easily add new character images to resources folder (following similar style)
+- Easily create new maps to play using Tiled
+- Well documented Game Engine and code base.
+- Extendable by design
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+License:
+See the accompanying LICENSE.TXT file
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+Credits:
+Artwork: See resources/Credits.txt and resources/README.txt
+files.
+Programming: Contact ryanlindeman@gmail.com
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+3rd party tools and description:
+GQP - Makes compiling code easier for Linux, Windows, etc. by combining
+      multiple Open Source libraries and your custom projects in a quick
+      and easy fashion (see compiling instructions below).
+GQE - Game Engine developed by Ryan Lindeman and Jacob Dix from 2010-present.
+      A few minor changes were made and published as part of the LPC
+      competition. These changes were primarily small bug fixes in the GQE
+      implementation or string changes to specific properties used in the
+      Game Engine. Since I am the author and all code was largely available
+      I felt this was acceptable.
+SFML - A graphics, audio, network, and system toolkit used by GQE to provide
+       management of all assets.
+TmxParser - A small library used to parse TMX files produced by Tiled
+TinyXML - Used by TmxParser to parse the TMX XML file
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+Game Play Instructions:
+1. Each participant launches the TnT executable and uses the space bar to
+   select the character to represent themselves and pushes Enter to accept
+   their choice.
+2. Each player waits until all other participants join the LAN game that is
+   about to begin. Once all players have joined (you see their characters
+   line up across the screen) each player presses the space bar to begin the
+   game.
+3. The level is loaded and each player waits until each player finishes the
+   Loading process and the game automatically begins.
+4. Run around collecting treasure!
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+Compilation Instructions:
+There are two ways to compile Traps and Treasures. The easiest technique is
+to use the TnT-full-src.tgz file available on the gqp-tnt Google Code project
+page which contains all the 3rd party source files necessary to compile the
+software.  The second way, while a little more involved enables you to see
+the benefits of using GQP for your own projects.  Both techniques are
+described below.
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+Compiling TnT-full-src-v1.3.tgz file under Linux/Windows.
+1. Make sure you have cmake installed as GQP and TnT use CMake exclusively to
+   compile the 3rd party libraries and TnT to produce the TnT project.
+   Typically this involves running "sudo apt-get install cmake" from a linux
+   Terminal or Windows command prompt window.
+2. Download the TnT-full-src.tgz file from the gqp-tnt Google Code project.
+   Typically this involves running the following from a Terminal window
+   "wget http://gqp-tnt.googlecode.com/files/TnT-full-src-v1.3.tgz"
+3. Extract the files from the TnT-full-src-v1.3.tgz file.
+   Typically this involves running the following from a Terminal window
+   "gtar xzvf TnT-full-src-v1.3.tgz"
+4. Navigate to the GQP build directory and run cmake.
+   "cd gqp/build" followed by
+   "cmake .."
+5. Compile and link the code organized by GQP by doing the following:
+   "make"
+   Observe the code compiling all 3rd party libraries quickly and easily and
+   the TnT project.
+6. Navigate to the newly built TnT project folder
+   "cd <path to gqp/build>/projects/tnt" followed by
+   "./tnt" to run the program
+
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+Compiling TnT from source repository using GQP under Linux/Windows.
+1. Make sure you have cmake, svn, Hg, and git installed as GQP makes use of
+   all these tools to download 3rd party tools straight from their
+   repositories to give you the latest editions of each 3rd party library
+   (you can also edit each 3rd party libraries Options.cmake file and specify
+   a specific tag you want to use).
+2. Download the GQP source code from its Google Code repository
+   "cd <some path like C:\Projects>"
+   "hg clone https://RyanLindeman@code.google.com/p/gqp/ gqp"
+   By doing this you can more easily update your GQP versions using the Hg
+   client tool or TortoiesHg tool in the future
+3. Navigate to the GQP projects folder and download the TnT project
+   "cd <path to newly created gqp folder from above>/projects"
+   "hg clone https://RyanLindeman@code.google.com/p/gqp-tnt/ TnT"
+   By doing this you can more easily update your TnT version using the Hg
+   client tool or TortoiesHg tool in the future. Unlimited projects can be
+   added to the GQP projects folder, it is easy to add a new project based on
+   a copy of the old project and have GQP handle all the compiling and
+   linking challenges.
+4. Create a build folder to build Makefiles or Visual Studio solution files
+   into.
+   "cd <path to newly created gqp folder>"
+   "mkdir build"
+   "cd build"
+   "cmake .."  This step requires that Cmake, SVN, Hg, Git, etc all be
+   installed and available from your path.
+5. Compile and link the code organized by GQP by doing the following:
+   "make"
+   Observe the code compiling all 3rd party libraries quickly and easily and
+   the TnT project.
+6. Navigate to the newly built TnT project folder
+   "cd <path to gqp/build>/projects/tnt" followed by
+   "./tnt" to run the program
+

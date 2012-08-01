@@ -7,12 +7,14 @@
  * @date 20120712 - Initial Release
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120731 - Add sound effects and player spawn points
  */
 #ifndef LEVEL_SYSTEM_HPP_INCLUDED
 #define LEVEL_SYSTEM_HPP_INCLUDED
 
 #include <map>
 #include <deque>
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 #include <GQE/Entity/interfaces/ISystem.hpp>
 #include <GQE/Entity/classes/Prototype.hpp>
@@ -247,6 +249,7 @@ class LevelSystem : public GQE::ISystem
     GQE::Prototype     mTile;
     GQE::Prototype     mObject;
     GQE::ImageAsset*   mTilesets;
+    GQE::SoundAsset*   mSounds;
     GQE::Uint32        mScreenTileWidth;
     GQE::Uint32        mScreenTileHeight;
     GQE::Uint32        mScreenWidth;
@@ -258,10 +261,13 @@ class LevelSystem : public GQE::ISystem
     GQE::typeAssetID   mLoadingFilename;
     sf::Vector2u       mScreen;
     sf::Font           mFont;
+    sf::Sound          mBump;
+    sf::Sound          mCoin;
     LoadContext*       mLoader;
     GQE::Uint32        mLoaderCount;
     // Map of screens to each z-ordered deque of IEntity* tiles for rendering purposes
     std::map<const GQE::Uint32, ScreenInfo> mScreens;
+    std::vector<sf::Vector2f> mPositions;
 
     /**
      * ResetProperties will set the LevelSystem properties of all IEntity
