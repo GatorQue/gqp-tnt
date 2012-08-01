@@ -61,9 +61,9 @@ Game Play Instructions:
 -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 Compilation Instructions:
 There are two ways to compile Traps and Treasures. The easiest technique is
-to use the TnT-full-src.tgz file available on the gqp-tnt Google Code project
-page which contains all the 3rd party source files necessary to compile the
-software.  The second way, while a little more involved enables you to see
+to use the TnT-full-src-v1.3.tgz file available on the gqp-tnt Google Code
+project page which contains all the 3rd party source files necessary to compile
+the software.  The second way, while a little more involved enables you to see
 the benefits of using GQP for your own projects.  Both techniques are
 described below.
 
@@ -104,7 +104,7 @@ Compiling TnT from source repository using GQP under Linux/Windows.
    client tool or TortoiesHg tool in the future
 3. Navigate to the GQP projects folder and download the TnT project
    "cd <path to newly created gqp folder from above>/projects"
-   "hg clone https://RyanLindeman@code.google.com/p/gqp-tnt/ TnT"
+   "hg clone https://RyanLindeman@code.google.com/p/gqp-tnt/ tnt"
    By doing this you can more easily update your TnT version using the Hg
    client tool or TortoiesHg tool in the future. Unlimited projects can be
    added to the GQP projects folder, it is easy to add a new project based on
