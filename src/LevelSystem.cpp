@@ -7,6 +7,7 @@
  * @date 20120712 - Initial Release
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120731 - Add sound effects and player spawn points
  */
 #include "LevelSystem.hpp"
 #include <SFML/Graphics.hpp>
@@ -27,6 +28,7 @@ LevelSystem::LevelSystem(GQE::IApp& theApp,
   mTile("map_tile"),
   mObject("map_object"),
   mTilesets(NULL),
+  mSounds(NULL),
   mScreenTileWidth(theScreenTileWidth),
   mScreenTileHeight(theScreenTileHeight),
   mScreenWidth(0),
@@ -46,6 +48,25 @@ LevelSystem::LevelSystem(GQE::IApp& theApp,
 #else
   // First load our Arial font
   mFont.loadFromFile(theFontFilename);
+#endif
+
+  // Create our array of sound effects and load them in now
+  mSounds = new(std::nothrow) GQE::SoundAsset[5];
+  mSounds[0].SetID("resources/audio/coin8.wav",GQE::AssetLoadNow);
+  mSounds[1].SetID("resources/audio/coin9.wav",GQE::AssetLoadNow);
+  mSounds[2].SetID("resources/audio/coin10.wav",GQE::AssetLoadNow);
+  mSounds[3].SetID("resources/audio/chest.flac",GQE::AssetLoadNow);
+  mSounds[4].SetID("resources/audio/bump.wav",GQE::AssetLoadNow);
+
+  // Set our bump sound for walls
+#if (SFML_VERSION_MAJOR < 2)
+  mBump.SetBuffer(mSounds[4].GetAsset());
+  mBump.SetVolume(80.0f);
+  mCoin.SetVolume(30.0f);
+#else
+  mBump.setBuffer(mSounds[4].GetAsset());
+  mBump.setVolume(80.0f);
+  mCoin.setVolume(30.0f);
 #endif
 
   // Determine which scale to use for our tiles
@@ -95,6 +116,9 @@ LevelSystem::~LevelSystem()
   // This will cause all screens to be dropped, essentially unloading the map
   //DropAllScreens();
 
+  // Delete the sound effects
+  delete[] mSounds;
+
   // Delete the current tilesets
   delete[] mTilesets;
 
@@ -112,19 +136,21 @@ void LevelSystem::AddProperties(GQE::IEntity* theEntity)
   theEntity->mProperties.Add<sf::Vector2u>("wMapD", sf::Vector2u(0,0));
   theEntity->mProperties.Add<sf::Vector2u>("wMapR", sf::Vector2u(0,0));
   theEntity->mProperties.Add<sf::Vector2u>("wScreen", sf::Vector2u(0,0));
+  theEntity->mProperties.Add<sf::Vector2u>("wScreenPrevious", sf::Vector2u(0,0));
   theEntity->mProperties.Add<sf::Sprite>("Sprite", sf::Sprite());
   theEntity->mProperties.Add<bool>("bVisible", false);
   theEntity->mProperties.Add<bool>("bLoading", true);
   theEntity->mProperties.Add<bool>("bLoadingPrevious", false);
 #if SFML_VERSION_MAJOR<2
   theEntity->mProperties.Add<sf::IntRect>("rBoundingBox",
-    sf::IntRect(16*mTileScale.x,32*mTileScale.y,48*mTileScale.x,32*mTileScale.y));
+    sf::IntRect(16*(int)mTileScale.x,32*(int)mTileScale.y,48*(int)mTileScale.x,32*(int)mTileScale.y));
 #else
   theEntity->mProperties.Add<sf::IntRect>("rBoundingBox",
-    sf::IntRect(16*mTileScale.x,32*mTileScale.y,32*mTileScale.x,32*mTileScale.y));
+    sf::IntRect(16*(int)mTileScale.x,32*(int)mTileScale.y,32*(int)mTileScale.x,32*(int)mTileScale.y));
 #endif
   theEntity->mProperties.Add<sf::IntRect>("rSpriteRect",sf::IntRect(0,0,0,0));
   theEntity->mProperties.Add<sf::Vector2f>("vPosition",sf::Vector2f(0,0));
+  theEntity->mProperties.Add<sf::Vector2f>("vPositionPrevious",sf::Vector2f(0,0));
   theEntity->mProperties.Add<sf::Vector2f>("vScale", mTileScale);
   theEntity->mProperties.Add<GQE::Uint32>("uScore", 0);
 }
@@ -408,8 +434,8 @@ bool LevelSystem::LoadMap(const GQE::typeAssetID theMapFilename,
       // Calculate the number of screens
       mScreenWidth = mLoader->map.GetWidth() / mScreenTileWidth;
       mScreenHeight = mLoader->map.GetHeight() / mScreenTileHeight;
-      mTileWidth = mLoader->map.GetTileWidth() * mTileScale.x;
-      mTileHeight = mLoader->map.GetTileHeight() * mTileScale.y;
+      mTileWidth = (GQE::Uint32)(mTileScale.x * mLoader->map.GetTileWidth());
+      mTileHeight = (GQE::Uint32)(mTileScale.y * mLoader->map.GetTileHeight());
 
       // Move on to the first stage
       mLoader->stage = TilesetStage;
@@ -499,13 +525,76 @@ void LevelSystem::CheckTreasure(GQE::IEntity* theEntity)
     if(anEntity->mProperties.Get<bool>("bVisible") &&
       anMapCC == anEntity->mProperties.Get<sf::Vector2u>("wMap"))
     {
+      // Get the value for this coin or treasure chest
+      GQE::Uint32 anValue = anEntity->mProperties.Get<GQE::Uint32>("uValue");
+
       // Make the coin disappear
       anEntity->mProperties.Set<bool>("bVisible", false);
 
       // Add to our players total points according to the value of the treasure
       theEntity->mProperties.Set<GQE::Uint32>("uScore",
-        theEntity->mProperties.Get<GQE::Uint32>("uScore") + 
-        anEntity->mProperties.Get<GQE::Uint32>("uValue"));
+        theEntity->mProperties.Get<GQE::Uint32>("uScore") + anValue);
+
+      // If the player is visible to us, play the sound effect (if it has one)
+      if(theEntity->mProperties.Get<bool>("bVisible"))
+      {
+        // Only play if not already playing this sound effect
+#if (SFML_VERSION_MAJOR < 2)
+        if(sf::Sound::Playing != mCoin.GetStatus())
+        {
+          // Add sound effect for the treasure according to value
+          if(anValue < 5)
+          {
+            // Use copper coin sound
+            mCoin.SetBuffer(mSounds[0].GetAsset());
+          }
+          else if(anValue >= 5 && anValue < 10)
+          {
+            // Use silver coin sound
+            mCoin.SetBuffer(mSounds[1].GetAsset());
+          }
+          else if(anValue >= 10 && anValue < 50)
+          {
+            // Use gold coin sound
+            mCoin.SetBuffer(mSounds[2].GetAsset());
+          }
+          else if(anValue >= 50 && anValue < 100)
+          {
+            // Use treasure chest sound
+            mCoin.SetBuffer(mSounds[3].GetAsset());
+          }
+          // Now play the sound chosen above
+          mCoin.Play();
+        }
+#else
+        if(sf::Sound::Playing != mCoin.getStatus())
+        {
+          // Add sound effect for the treasure according to value
+          if(anValue < 5)
+          {
+            // Use copper coin sound
+            mCoin.setBuffer(mSounds[0].GetAsset());
+          }
+          else if(anValue >= 5 && anValue < 10)
+          {
+            // Use silver coin sound
+            mCoin.setBuffer(mSounds[1].GetAsset());
+          }
+          else if(anValue >= 10 && anValue < 50)
+          {
+            // Use gold coin sound
+            mCoin.setBuffer(mSounds[2].GetAsset());
+          }
+          else if(anValue >= 50 && anValue < 100)
+          {
+            // Use treasure chest sound
+            mCoin.setBuffer(mSounds[3].GetAsset());
+          }
+          // Now play the sound chosen above
+          mCoin.play();
+        }
+#endif
+      }
     }
   } //while(anIter != mScreens[anScreen.x + anScreen.y*mScreenWidth].treasures.end())
 }
@@ -518,6 +607,9 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
   // Should we skip this check because we aren't moving?
   if(anVelocity.x > 0.1f || anVelocity.x < -0.1f || anVelocity.y > 0.1f || anVelocity.y < -0.1f)
   {
+    // Did we hit a wall?
+    bool anHit = false;
+
     // Get the Position of the current player
     sf::Vector2f anPosition = theEntity->mProperties.Get<sf::Vector2f>("vPosition");
     sf::Vector2u anScreen = theEntity->mProperties.Get<sf::Vector2u>("wScreen");
@@ -550,7 +642,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
         if(anVelocity.x < 0.0f && anMapL == anMap)
         {
           // Update position to exactly next to the tile
-          anPosition.x = (anMapL.x % mScreenTileWidth) * mTileWidth -
+          anPosition.x = (float)(anMapL.x % mScreenTileWidth) * mTileWidth -
 #if (SFML_VERSION_MAJOR < 2)
             anBoundingBox.left + anBoundingBox.GetWidth();
 #else
@@ -559,12 +651,13 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
 
           // Cancel velocity in left direction
           anVelocity.x = 0.0f;
+          anHit = true;
         }
         // Are we moving right and hit a wall?
         else if(anVelocity.x > 0.0f && anMapR == anMap)
         {
           // Update position to exactly next to the tile
-          anPosition.x = (anMapR.x % mScreenTileWidth) * mTileWidth -
+          anPosition.x = (float)(anMapR.x % mScreenTileWidth) * mTileWidth -
 #if (SFML_VERSION_MAJOR < 2)
             anBoundingBox.left - anBoundingBox.GetWidth();
 #else
@@ -573,6 +666,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
 
           // Cancel velocity in right direction
           anVelocity.x = 0.0f;
+          anHit = true;
         }
         else
         {
@@ -583,7 +677,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
         if(anVelocity.y < 0.0f && anMapU == anMap)
         {
           // Update position to exactly next to the tile
-          anPosition.y = (anMapU.y % mScreenTileHeight) * mTileHeight -
+          anPosition.y = (float)(anMapU.y % mScreenTileHeight) * mTileHeight -
 #if (SFML_VERSION_MAJOR < 2)
             anBoundingBox.top + anBoundingBox.GetHeight();
 #else
@@ -592,12 +686,13 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
 
           // Cancel velocity in up direction
           anVelocity.y = 0.0f;
+          anHit = true;
         }
         // Are we moving down and hit a wall?
         else if(anVelocity.y > 0.0f && anMapD == anMap)
         {
           // Update position to exactly next to the tile
-          anPosition.y = (anMapD.y % mScreenTileHeight) * mTileHeight -
+          anPosition.y = (float)(anMapD.y % mScreenTileHeight) * mTileHeight -
 #if (SFML_VERSION_MAJOR < 2)
             anBoundingBox.top - anBoundingBox.GetHeight();
 #else
@@ -606,6 +701,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
 
           // Cancel velocity in down direction
           anVelocity.y = 0.0f;
+          anHit = true;
         }
         else
         {
@@ -625,6 +721,24 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
 
     // Update our position value
     theEntity->mProperties.Set<sf::Vector2f>("vPosition", anPosition);
+
+    // If the player is visible to us, play the sound effect
+    if(anHit && theEntity->mProperties.Get<bool>("bVisible"))
+    {
+#if (SFML_VERSION_MAJOR < 2)
+      // Only play if not already playing this sound effect
+      if(sf::Sound::Playing != mBump.GetStatus())
+      {
+        mBump.Play();
+      }
+#else
+      // Only play if not already playing this sound effect
+      if(sf::Sound::Playing != mBump.getStatus())
+      {
+        mBump.play();
+      }
+#endif
+    }
   }
 }
 
@@ -649,7 +763,7 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
   if(anVelocity.x < 0.0f && 0 == (anMapR.x % mScreenTileWidth) && anScreen.x > 0)
   {
     // Update position to exactly next to the tile
-    anPosition.x = (mScreenTileWidth - 1) * mTileWidth -
+    anPosition.x = (float)(mScreenTileWidth - 1) * mTileWidth -
 #if (SFML_VERSION_MAJOR < 2)
       anBoundingBox.left;
 #else
@@ -664,9 +778,9 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
     anScreen.x < mScreenWidth)
   {
 #if (SFML_VERSION_MAJOR < 2)
-    anPosition.x = -anBoundingBox.left;
+    anPosition.x = (float)-anBoundingBox.left;
 #else
-    anPosition.x = -anBoundingBox.left;
+    anPosition.x = (float)-anBoundingBox.left;
 #endif
 
     // Update our screen value
@@ -680,7 +794,7 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
   // Are we moving up and hit a screen edge?
   if(anVelocity.y < 0.0f && 0 == (anMapD.y % mScreenTileHeight) && anScreen.y > 0)
   {
-    anPosition.y = (mScreenTileHeight - 1) * mTileHeight -
+    anPosition.y = (float)(mScreenTileHeight - 1) * mTileHeight -
 #if (SFML_VERSION_MAJOR < 2)
       anBoundingBox.top;
 #else
@@ -695,9 +809,9 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
     anScreen.y < mScreenHeight)
   {
 #if (SFML_VERSION_MAJOR < 2)
-    anPosition.y = -anBoundingBox.top;
+    anPosition.y = (float)-anBoundingBox.top;
 #else
-    anPosition.y = -anBoundingBox.top;
+    anPosition.y = (float)-anBoundingBox.top;
 #endif
 
     // Update our screen value
@@ -1166,44 +1280,10 @@ void LevelSystem::LoadStage3(void)
       // The Tmx::Object in the current ObjectGroup
       const Tmx::Object* anObject = anObjectGroup->GetObject(mLoader->object);
 
-      if(anObject->GetName()=="Player")
+      if(anObject->GetName()=="Start")
       {
-        // Create anInstance for this Tmx::Object
-        GQE::Instance* anInstance = mObject.MakeInstance();
-
-        if(anInstance != NULL)
-        {
-          // Set our z-order to the same as our group
-          anInstance->SetOrder(mLoader->group);
-
-          // Store the ObjectName in anInstance as a string property
-          anInstance->mProperties.Add<std::string>("ObjectName", anObject->GetName());
-
-          // Add the tile ID as a special property of anInstance
-          anInstance->mProperties.Add<std::string>("ObjectType", anObject->GetType());
-
-          //mControlSystem.AddProperties(anInstance);
-          //mControlSystem.AddEntity(anInstance);
-#if SFML_VERSION_MAJOR<2
-          //anInstance->mProperties.Set<sf::Sprite>("Sprite",
-          //  sf::Sprite(anObjectImage.GetAsset()));
-          //anInstance->mProperties.Set<sf::IntRect>("BoundingBox",sf::IntRect(2,2,16,16));
-#else
-          //anInstance->mProperties.Set<sf::Sprite>("Sprite",
-          //  sf::Sprite(anObjectImage.GetAsset(),sf::IntRect(0,32,16,16)));
-          //anInstance->mProperties.Set<sf::IntRect>("rBoundingBox",sf::IntRect(2,2,14,14));
-#endif
-
-          //anInstance->mProperties.Set<sf::IntRect>("rSpriteRect",sf::IntRect(0,0,16,16));
-          anInstance->mProperties.Set<sf::Vector2f>("vPosition",
-              sf::Vector2f((float)anObject->GetX(),(float)anObject->GetY()));
-          //anInstance->mProperties.Set<float>("fFrameDelay",0.5f);
-          //anInstance->mProperties.Set<sf::Vector2u>("vFrameModifier",sf::Vector2u(1,0));
-          //anInstance->mProperties.Set<sf::IntRect>("rFrameRect",sf::IntRect(0,0,32,64));
-          //anInstance->mProperties.Set<bool>("Player",true);
-          anInstance->mProperties.Set<sf::Vector2f>("vStartPosition",
-              sf::Vector2f((float)anObject->GetX(),(float)anObject->GetY()));
-        }
+        // Push the starting position into our vector of positions
+        mPositions.push_back(sf::Vector2f((float)anObject->GetX(), (float)anObject->GetY()));
       }
 
       // Increment our counters for the next call to LoadStage4
@@ -1239,7 +1319,7 @@ void LevelSystem::LoadStage4(void)
     // Reset all our registered IEntity properties
     //ResetProperties(true);
 
-    // Make each player visible now
+    // Clear our bLoading flag for each player
     std::map<const GQE::Uint32, std::deque<GQE::IEntity*> >::iterator anIter;
     anIter = mEntities.begin();
     while(anIter != mEntities.end())
@@ -1256,9 +1336,24 @@ void LevelSystem::LoadStage4(void)
         // Player is local
         if(anEntity->mProperties.Get<bool>("bNetworkLocal"))
         {
+          // Select a random position for this player
+          unsigned int anIndex = rand()%mPositions.size();
+          const sf::Vector2u anScreen(
+            (unsigned int)mPositions[anIndex].x / (mScreenTileWidth*mTileWidth),
+            (unsigned int)mPositions[anIndex].y / (mScreenTileHeight*mTileHeight));
+          const sf::Vector2f anPosition(
+            (float)((int)mPositions[anIndex].x % (mScreenTileWidth*mTileWidth)),
+            (float)((int)mPositions[anIndex].y % (mScreenTileHeight*mTileHeight)));
+
           // Set our LevelSystem properties
-          anEntity->mProperties.Set<std::string>("sLevelMap", mMapFilename);
-          anEntity->mProperties.Set<std::string>("sLevelLoading", mLoadingFilename);
+          anEntity->mProperties.Set<std::string>("sLoadingFilename", mLoadingFilename);
+          anEntity->mProperties.Set<std::string>("sMapFilename", mMapFilename);
+          
+          // Set our wScreen property value for this player
+          anEntity->mProperties.Set<sf::Vector2u>("wScreen", anScreen);
+
+          // Set our vPosition property value for this player
+          anEntity->mProperties.Set<sf::Vector2f>("vPosition", anPosition);
 
           // Set our bLoading property to false
           anEntity->mProperties.Set<bool>("bLoading", false);

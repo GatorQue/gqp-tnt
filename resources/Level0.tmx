@@ -609,4 +609,20 @@
    eJzt3UtqwzAUQNHsf3GeWetpCzWIh1w6u5NzQCSNHdlxhD5Pcnp/Pp/rO92/jz9pjTS3379pba/vz+/tfac87pFmvtfn73NZ2zHW2H+mNfbfz/c65Dc/wzz227ndL3m+ncfM89m2pzVef/t885rO9/znWKf3n671+pyv0/7557nObfPzQ+Epg1B46kMoPO00FJQ/Ss/4BArPeBsKTywGCuo/SuJ/lJQ/StpfSuIvlMSfKZn/pWT9FSX9P0rP+lYoiL9QUv9Rsv6AkvEHJfEXSsYflJ77hqGg/qNk/peS9aeU1H+U9P8omf+gJP5MyfwbJfd/UBJ/oWT8S8n6U0rqP0rGH5Ssv6Ik/kzJ+IOS9peS+o+S+Q9Kxh+UrP+jZPxByfo/Ssa/lIx/KWl/KVn/Qsn4l5L+HyX1HyXxF0rmfymJv1Ay/qDk/ktK+n+UxF8oaX8pKX+UxJ8pib9QEn+mJP5CSf+PkvXPlMRfKBl/UFL+KPn/l5T0/yiZ/6Dk99co6f9Rsv6Ukvk3Svp/lLS/lIw/KGl/KRl/UFL+KOn/UXL/ByXrXyhZ/0JJ+aNk/oOS8Qcl8RdK4s+U3H9JSfmjpPxREv+jpPxRMv9LSfyFkvqPkvqPkvqPkt9/pqT9paT9pST+TMn6P0r6f5S0v5SMPygpf5Tcf0lJ/4+S8kfp+f3Ta0vPnPAaz+dr95bWeNzz2fe9tnzW+HvP69qez/O7xvY9j+twjHmepzz2fd/eP4+5Rrr+2G8eZ57Xfo1O20/7ze/jdE1O39PMf37Pb8d9ux5v5eJ0TnPbT/oCKjfKaw==
   </data>
  </layer>
+ <objectgroup name="Spawns" width="160" height="120">
+  <properties>
+   <property name="bPlayerSpawns" value="1"/>
+  </properties>
+  <object name="Start" type="Players" x="4640" y="256" width="32" height="32"/>
+  <object name="Start" type="Players" x="3904" y="512" width="32" height="32"/>
+  <object name="Start" type="Players" x="2112" y="416" width="32" height="32"/>
+  <object name="Start" type="Players" x="64" y="448" width="32" height="32"/>
+  <object name="Start" type="Players" x="64" y="320" width="32" height="32"/>
+  <object name="Start" type="Players" x="928" y="3392" width="32" height="32"/>
+  <object name="Start" type="Players" x="5024" y="2400" width="32" height="32"/>
+  <object name="Start" type="Players" x="2112" y="1376" width="32" height="32"/>
+  <object name="Start" type="Players" x="2976" y="1120" width="32" height="32"/>
+  <object name="Start" type="Players" x="3552" y="1600" width="32" height="32"/>
+  <object name="Start" type="Players" x="4160" y="3744" width="32" height="32"/>
+ </objectgroup>
 </map>

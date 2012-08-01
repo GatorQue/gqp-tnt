@@ -41,4 +41,12 @@ Stephen Challener
 - baldricfrontwalksheet copy.png = character8.png
 - mage walking poses sheet copy.png = character10.png
 
+Johnathan Roatch
+- refrigerator-door-open.flac = chest.flac
+
+dklon
+- gong.wav = bump.wav
+
+Luke.RUSTLTD
+- coin_sounds.zip
 
