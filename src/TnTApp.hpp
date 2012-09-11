@@ -6,6 +6,7 @@
  * @author Ryan Lindeman
  * @date 20120707 - Initial Release
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120910 - Fix SFML v1.6 issues
  */
 #ifndef   T_N_T_APP_HPP_INCLUDED
 #define   T_N_T_APP_HPP_INCLUDED
@@ -20,7 +21,11 @@ class TnTApp : public GQE::IApp
     // Variables
     /////////////////////////////////////////////////////////////////////////
     /// The client socket for this application
+#if (SFML_VERSION_MAJOR < 2)
+    sf::SocketUDP mClient;
+#else
     sf::UdpSocket mClient;
+#endif
     /// Randomly selected client ID value for this client
     GQE::Uint32   mClientID;
 

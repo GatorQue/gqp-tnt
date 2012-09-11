@@ -98,8 +98,13 @@ class NetworkSystem : public GQE::ISystem
     UpdateFixedStep mUpdateStep;
     /// The game tick value incremented every time we act on input
     unsigned int mGameTick;
+#if (SFML_VERSION_MAJOR < 2)
+    /// The client socket for the local player
+    sf::SocketUDP& mClient;
+#else
     /// The client socket for the local player
     sf::UdpSocket& mClient;
+#endif
 
     /**
      * ProcessInput is responsible for acting on the uKeyState information

@@ -6,6 +6,7 @@
  * @date 20120712 - Initial Release
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120910 - Fix SFML v1.6 issues
  */
 #include "GameState.hpp"
 #include <SFML/Network.hpp>
@@ -91,8 +92,13 @@ void GameState::DoInit(void)
         // Set the other properties as NetworkSystem properties
         anInstance->mProperties.Set<GQE::Uint32>("uNetworkID",
           mApp.mProperties.Get<GQE::Uint32>(anPlayerID));
+#if (SFML_VERSION_MAJOR < 2)
+        anInstance->mProperties.Set<sf::IPAddress>("sNetworkAddr",
+          sf::IPAddress(mApp.mProperties.Get<std::string>(anPlayerAddr)));
+#else
         anInstance->mProperties.Set<sf::IpAddress>("sNetworkAddr",
           sf::IpAddress(mApp.mProperties.Get<std::string>(anPlayerAddr)));
+#endif
         anInstance->mProperties.Set<unsigned short>("uNetworkPort",
           mApp.mProperties.Get<unsigned short>(anPlayerPort));
 
@@ -107,36 +113,36 @@ void GameState::DoInit(void)
           sf::Sprite(mPlayerImages[iloop].GetAsset()));
 
         // Get the SpriteRect property from our instance
-    #if (SFML_VERSION_MAJOR < 2)
+#if (SFML_VERSION_MAJOR < 2)
         sf::IntRect anSpriteRect(0,64*2,64,64*(2+1));
-    #else
+#else
         sf::IntRect anSpriteRect(0,64*2,64,64);
-    #endif
+#endif
         anInstance->mProperties.Set<sf::IntRect>("rSpriteRect", anSpriteRect);
 
         // Set our animation properties
         anInstance->mProperties.Set<float>("fFrameDelay", 0.08f);
         anInstance->mProperties.Set<sf::Vector2u>("wFrameModifier", sf::Vector2u(1,0));
-    #if (SFML_VERSION_MAJOR < 2)
+#if (SFML_VERSION_MAJOR < 2)
         anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
             sf::IntRect(0,0,mPlayerImages[iloop].GetAsset().GetWidth(),
-            mPlayerImage.GetAsset().GetHeight());
-    #else
+            mPlayerImages[iloop].GetAsset().GetHeight()));
+#else
         anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
             sf::IntRect(0,0,mPlayerImages[iloop].GetAsset().getSize().x,
             mPlayerImages[iloop].GetAsset().getSize().y));
-    #endif
+#endif
 
         // Determine the initial position on the screen for our player in the game
-    #if (SFML_VERSION_MAJOR < 2)
+#if (SFML_VERSION_MAJOR < 2)
         anInstance->mProperties.Set<sf::Vector2f>("vPosition",
             sf::Vector2f((float)(mApp.mWindow.GetWidth() - anSpriteRect.GetWidth()) / 2,
               (float)(mApp.mWindow.GetHeight() - anSpriteRect.GetHeight()) / 2));
-    #else
+#else
         anInstance->mProperties.Set<sf::Vector2f>("vPosition",
             sf::Vector2f((float)(mApp.mWindow.getSize().x - anSpriteRect.width) / 2,
               (float)(mApp.mWindow.getSize().y - anSpriteRect.height) / 2));
-    #endif
+#endif
 
         // Only the first player is a local player, all others are network players to us
         if(iloop == 0)

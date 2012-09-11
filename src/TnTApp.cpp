@@ -6,6 +6,7 @@
  * @author Ryan Lindeman
  * @date 20110704 - Initial Release
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120910 - Fix SFML v1.6 issues
  */
 #include "TnTApp.hpp"
 #include "CharacterState.hpp"
@@ -17,19 +18,33 @@ TnTApp::TnTApp(const std::string theTitle) :
   GQE::IApp(theTitle),
   mClientID(0)
 {
+#if (SFML_VERSION_MAJOR < 2)
+  // Bind our game client socket to random port provided
+  bool anStatus = mClient.Bind(0);
+#else
   // Bind our game client socket to random port provided
   sf::Socket::Status anStatus = mClient.bind(sf::Socket::AnyPort);
+#endif
 
   // Make sure we succeeded to bind our client socket
+#if (SFML_VERSION_MAJOR < 2)
+  if(anStatus == false)
+#else
   if(anStatus == sf::Socket::Error)
+#endif
   {
     // Signal the application to exit
     Quit(GQE::StatusError);
   }
   else
   {
+#if (SFML_VERSION_MAJOR < 2)
+    // Set our client as non-blocking
+    mClient.SetBlocking(false);
+#else
     // Set our client as non-blocking
     mClient.setBlocking(false);
+#endif
   }
 
   // Use time to seed our randomizer
@@ -41,8 +56,13 @@ TnTApp::TnTApp(const std::string theTitle) :
 
 TnTApp::~TnTApp()
 {
+#if (SFML_VERSION_MAJOR < 2)
+  // Unbind our local client socket
+  mClient.Unbind();
+#else
   // Unbind our local client socket
   mClient.unbind();
+#endif
 }
 
 void TnTApp::InitAssetHandlers()
