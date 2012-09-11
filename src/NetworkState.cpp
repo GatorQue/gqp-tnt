@@ -5,6 +5,7 @@
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120910 - Fix SFML v1.6 issues
  */
 #include "NetworkState.hpp"
 #include <SFML/Graphics.hpp>
@@ -25,15 +26,24 @@ NetworkState::NetworkState(TnTApp& theApp) :
   mServerActive(false)
 {
   // Bind our game server socket
+#if (SFML_VERSION_MAJOR < 2)
+  mServerActive = mServer.Bind(GAME_SERVER_PORT);
+#else
   sf::Socket::Status anStatus = mServer.bind(GAME_SERVER_PORT);
 
   // See if we successfully bound the Game Server Port
   mServerActive = (anStatus != sf::Socket::Error);
+#endif
 
   if(mServerActive)
   {
+#if (SFML_VERSION_MAJOR < 2)
+    // Set our server as non-blocking
+    mServer.SetBlocking(false);
+#else
     // Set our server as non-blocking
     mServer.setBlocking(false);
+#endif
 
     ILOG() << "NetworkState::ctor() Server Active!" << std::endl;
   }
@@ -64,12 +74,21 @@ void NetworkState::DoInit(void)
   mPlayerImage = mApp.mProperties.Get<GQE::typeAssetID>("sCharacter");
 
   // What ID and port were we assigned?
+#if (SFML_VERSION_MAJOR < 2)
+  ILOG() << "NetworkState::DoInit() ClientID=" << mTnTApp.mClientID << ", port="
+    << mTnTApp.mClient.GetPort() << std::endl;
+
+  // Now add this player as the first player
+  AddPlayer(mTnTApp.mClientID, sf::IPAddress::GetLocalAddress(),
+    mTnTApp.mClient.GetPort(), mPlayerImage);
+#else
   ILOG() << "NetworkState::DoInit() ClientID=" << mTnTApp.mClientID << ", port="
     << mTnTApp.mClient.getLocalPort() << std::endl;
 
   // Now add this player as the first player
   AddPlayer(mTnTApp.mClientID, sf::IpAddress::getLocalAddress(),
     mTnTApp.mClient.getLocalPort(), mPlayerImage);
+#endif
 }
 
 void NetworkState::ReInit()
@@ -140,8 +159,13 @@ void NetworkState::Draw(void)
 
 void NetworkState::HandleCleanup(void)
 {
+#if (SFML_VERSION_MAJOR < 2)
+  // Unbind our server socket
+  mServer.Unbind();
+#else
   // Unbind our server socket
   mServer.unbind();
+#endif
 
   // Now remove all of our images we have collected
 #if (SFML_VERSION_MAJOR < 2)
@@ -170,16 +194,28 @@ void NetworkState::HandleCleanup(void)
   mPlayerImages.clear();
 }
 
+#if (SFML_VERSION_MAJOR < 2)
+void NetworkState::AddPlayer(GQE::Uint32 theID, sf::IPAddress theAddress,
+  unsigned short thePort, GQE::typeAssetID theAssetID)
+#else
 void NetworkState::AddPlayer(GQE::Uint32 theID, sf::IpAddress theAddress,
   unsigned short thePort, GQE::typeAssetID theAssetID)
+#endif
 {
   // Is this player not found? then add him now
   if(mPlayers.find(theID) == mPlayers.end())
   {
+#if (SFML_VERSION_MAJOR < 2)
+    // What ID and port were we assigned?
+    ILOG() << "NetworkState::AddPlayer() ID=" << theID << ", addr="
+      << theAddress.ToString() << ", port=" << thePort
+      << ", assetID=" << theAssetID << std::endl;
+#else
     // What ID and port were we assigned?
     ILOG() << "NetworkState::AddPlayer() ID=" << theID << ", addr="
       << theAddress.toString() << ", port=" << thePort
       << ", assetID=" << theAssetID << std::endl;
+#endif
 
     // Create an Instance to represent this player and set its various properties
     GQE::Instance* anInstance = mPlayer.MakeInstance();
@@ -222,7 +258,7 @@ void NetworkState::AddPlayer(GQE::Uint32 theID, sf::IpAddress theAddress,
       anInstance->mProperties.Set<sf::Vector2u>("wFrameModifier", sf::Vector2u(1,0));
 #if (SFML_VERSION_MAJOR < 2)
       anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
-          sf::IntRect(0,0,anImage->GetWidth(), anImage->GetHeight());
+          sf::IntRect(0,0,anImage->GetWidth(), anImage->GetHeight()));
 #else
       anInstance->mProperties.Set<sf::IntRect>("rFrameRect",
           sf::IntRect(0,0,anImage->getSize().x, anImage->getSize().y));
@@ -268,7 +304,11 @@ void NetworkState::AddPlayer(GQE::Uint32 theID, sf::IpAddress theAddress,
 
       // Now register these with our IApp properties
       mTnTApp.mProperties.Add<GQE::Uint32>(anPlayerID, theID);
+#if (SFML_VERSION_MAJOR < 2)
+      mTnTApp.mProperties.Add<std::string>(anPlayerAddr, theAddress.ToString());
+#else
       mTnTApp.mProperties.Add<std::string>(anPlayerAddr, theAddress.toString());
+#endif
       mTnTApp.mProperties.Add<unsigned short>(anPlayerPort, thePort);
       mTnTApp.mProperties.Add<GQE::typeAssetID>(anPlayerAsset, theAssetID);
 
@@ -289,13 +329,23 @@ void NetworkState::ProcessClients(void)
 {
   // Data packet received from client
   sf::Packet anData;
+#if (SFML_VERSION_MAJOR < 2)
+  // The IP address of the client
+  sf::IPAddress anRemoteAddr;
+#else
   // The IP address of the client
   sf::IpAddress anRemoteAddr;
+#endif
   // The port of the client
   unsigned short anRemotePort;
 
+#if (SFML_VERSION_MAJOR < 2)
+  // Read from the server to get the client information
+  sf::Socket::Status anResult = mServer.Receive(anData, anRemoteAddr, anRemotePort);
+#else
   // Read from the server to get the client information
   sf::Socket::Status anResult = mServer.receive(anData, anRemoteAddr, anRemotePort);
+#endif
 
   if(anResult == sf::Socket::Done)
   {
@@ -326,7 +376,11 @@ void NetworkState::ProcessClients(void)
       // Prepare a reply for each previously registered client
       sf::Packet anReply;
       anReply << anIter->first;
+#if (SFML_VERSION_MAJOR < 2)
+      anReply << anIter->second.addr.ToString();
+#else
       anReply << anIter->second.addr.toString();
+#endif
       anReply << anIter->second.port;
       anReply << anIter->second.assetID;
 
@@ -335,8 +389,13 @@ void NetworkState::ProcessClients(void)
       //  << ", port=" << anIter->second.port
       //  << ", assetID=" << anIter->second.assetID << std::endl;
 
+#if (SFML_VERSION_MAJOR < 2)
+      // Send an acknowlegement message back to the client
+      mServer.Send(anReply, anRemoteAddr, anRemotePort);
+#else
       // Send an acknowlegement message back to the client
       mServer.send(anReply, anRemoteAddr, anRemotePort);
+#endif
 
       // Move on to the next client registered
       anIter++;
@@ -357,25 +416,45 @@ void NetworkState::SendJoinRequest(void)
 
   // Prepare the Join request packet
   anJoin << mTnTApp.mClientID;    // Start with our personal client ID value
+#if (SFML_VERSION_MAJOR < 2)
+  anJoin << sf::IPAddress::GetLocalAddress().ToString(); // Local IP Address
+  anJoin << mTnTApp.mClient.GetPort(); // Local port that was randomly assigned to us
+#else
   anJoin << sf::IpAddress::getLocalAddress().toString(); // Local IP Address
   anJoin << mTnTApp.mClient.getLocalPort(); // Local port that was randomly assigned to us
+#endif
   anJoin << mPlayerImage; // Add the player image we have chosen for ourselves
 
+#if (SFML_VERSION_MAJOR < 2)
+  // Send a broadcast packet to everyone about ourselves
+  mTnTApp.mClient.Send(anJoin, 0xffffffff, GAME_SERVER_PORT);
+#else
   // Send a broadcast packet to everyone about ourselves
   mTnTApp.mClient.send(anJoin, sf::IpAddress::Broadcast, GAME_SERVER_PORT);
+#endif
 }
 
 void NetworkState::ProcessMessages(void)
 {
   // Data packet for each message received from the server
   sf::Packet anData;
+#if (SFML_VERSION_MAJOR < 2)
+  // The senders IP address
+  sf::IPAddress anSenderAddr;
+#else
   // The senders IP address
   sf::IpAddress anSenderAddr;
+#endif
   // The senders port
   unsigned short anSenderPort;
 
+#if (SFML_VERSION_MAJOR < 2)
+  // Process the messages from our server
+  sf::Socket::Status anResult = mTnTApp.mClient.Receive(anData, anSenderAddr, anSenderPort);
+#else
   // Process the messages from our server
   sf::Socket::Status anResult = mTnTApp.mClient.receive(anData, anSenderAddr, anSenderPort);
+#endif
 
   // Did we get a reply? was it from our sever?
   if(anResult == sf::Socket::Done && anSenderPort == GAME_SERVER_PORT)

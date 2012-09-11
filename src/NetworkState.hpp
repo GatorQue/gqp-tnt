@@ -5,6 +5,7 @@
  * @author Ryan Lindeman
  * @date 20120712 - Initial Release
  * @date 20120730 - Improved network synchronization for multiplayer game play
+ * @date 20120910 - Fix SFML v1.6 issues
  */
 
 #ifndef   NETWORK_STATE_HPP_INCLUDED
@@ -85,7 +86,11 @@ class NetworkState : public GQE::IState
     /// Constant representing the game port to use for network game
     static const unsigned int  GAME_SERVER_PORT = 55000;
     typedef struct {
+#if (SFML_VERSION_MAJOR < 2)
+      sf::IPAddress    addr;
+#else
       sf::IpAddress    addr;
+#endif
       unsigned short   port;
       GQE::typeAssetID assetID;
     } typeClientInfo;
@@ -114,8 +119,13 @@ class NetworkState : public GQE::IState
 
     /// True if the server socket is bound and active
     bool                       mServerActive;
+#if (SFML_VERSION_MAJOR < 2)
+    /// The server socket if no one on this PC has already bound it
+    sf::SocketUDP              mServer;
+#else
     /// The server socket if no one on this PC has already bound it
     sf::UdpSocket              mServer;
+#endif
 
     /**
      * AddPlayer is responsible for adding each player as they join the network
@@ -126,8 +136,13 @@ class NetworkState : public GQE::IState
      * @param[in] thePort is the IP Address port of the new network player
      * @param[in] theAssetID to use to represent this network player in the game
      */
+#if (SFML_VERSION_MAJOR < 2)
+    void AddPlayer(GQE::Uint32 theID, sf::IPAddress theAddress,
+      unsigned short thePort, GQE::typeAssetID theAssetID);
+#else
     void AddPlayer(GQE::Uint32 theID, sf::IpAddress theAddress,
       unsigned short thePort, GQE::typeAssetID theAssetID);
+#endif
 
     /**
      * ProcessClients is responsible for processing all client messages and

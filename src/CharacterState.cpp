@@ -42,8 +42,8 @@ CharacterState::CharacterState(GQE::IApp& theApp) :
     // If the image loaded and is a multiple of 64 pixels for both x and y then its ok
     if(anResult == true &&
 #if (SFML_VERSION_MAJOR < 2)
-      mCharacterImage.getSize().x % 64 == 0 && mCharacterImage.getSize().x > 0 &&
-      mCharacterImage.getSize().y % 64 == 0 && mCharacterImage.getSize().y > 0
+      mCharacterImage.GetWidth() % 64 == 0 && mCharacterImage.GetWidth() > 0 &&
+      mCharacterImage.GetHeight() % 64 == 0 && mCharacterImage.GetHeight() > 0
 #else
       mCharacterImage.getSize().x % 64 == 0 && mCharacterImage.getSize().x > 0 &&
       mCharacterImage.getSize().y % 64 == 0 && mCharacterImage.getSize().y > 0
@@ -122,7 +122,7 @@ void CharacterState::DoInit(void)
     mCharacter->mProperties.Set<sf::Vector2u>("wFrameModifier", sf::Vector2u(1,0));
 #if (SFML_VERSION_MAJOR < 2)
     mCharacter->mProperties.Set<sf::IntRect>("rFrameRect",
-        sf::IntRect(0,0,mCharacterImage.GetWidth(), mCharacterImage.GetHeight());
+        sf::IntRect(0,0,mCharacterImage.GetWidth(), mCharacterImage.GetHeight()));
 #else
     mCharacter->mProperties.Set<sf::IntRect>("rFrameRect",
         sf::IntRect(0,0,mCharacterImage.getSize().x, mCharacterImage.getSize().y));
@@ -293,7 +293,7 @@ void CharacterState::HandleEvents(sf::Event theEvent)
   // Set the animation frame rect according to the size of the image
 #if (SFML_VERSION_MAJOR < 2)
   mCharacter->mProperties.Set<sf::IntRect>("rFrameRect",
-      sf::IntRect(0,0,mCharacterImage.GetWidth(), mCharacterImage.GetHeight());
+      sf::IntRect(0,0,mCharacterImage.GetWidth(), mCharacterImage.GetHeight()));
 #else
   mCharacter->mProperties.Set<sf::IntRect>("rFrameRect",
       sf::IntRect(0,0,mCharacterImage.getSize().x, mCharacterImage.getSize().y));

@@ -7,6 +7,7 @@
  * @date 20120712 - Initial Release
  * @date 20120730 - Improved network synchronization for multiplayer game play
  * @date 20120731 - Add sound effects and player spawn points
+ * @date 20120910 - Fix SFML v1.6 issues
  */
 #include "NetworkSystem.hpp"
 #include <SFML/Network.hpp>
@@ -29,7 +30,11 @@ void NetworkSystem::AddProperties(GQE::IEntity* theEntity)
 {
   theEntity->mProperties.Add<bool>("bNetworkLocal", false);
   theEntity->mProperties.Add<GQE::Uint32>("uNetworkID", 0);
+#if (SFML_VERSION_MAJOR < 2)
+  theEntity->mProperties.Add<sf::IPAddress>("sNetworkAddr", sf::IPAddress(sf::IPAddress::LocalHost));
+#else
   theEntity->mProperties.Add<sf::IpAddress>("sNetworkAddr", sf::IpAddress(sf::IpAddress::LocalHost));
+#endif
   theEntity->mProperties.Add<unsigned short>("uNetworkPort", 0);
   theEntity->mProperties.Add<float>("fSpeed", 8.0f);
   theEntity->mProperties.Add<GQE::Uint32>("uKeyState", 0);
@@ -400,11 +405,20 @@ void NetworkSystem::ReceiveRemoteInput(void)
   // Attempt to receive packets from remote players
   do {
     sf::Packet anData;
+#if (SFML_VERSION_MAJOR < 2)
+    sf::IPAddress anRemoteAddr;
+#else
     sf::IpAddress anRemoteAddr;
+#endif
     unsigned short anRemotePort;
   
+#if (SFML_VERSION_MAJOR < 2)
+    // See if a packet can be received on our client socket
+    anResult = mClient.Receive(anData, anRemoteAddr, anRemotePort);
+#else
     // See if a packet can be received on our client socket
     anResult = mClient.receive(anData, anRemoteAddr, anRemotePort);
+#endif
 
     // Process packet if one was received
     if(anResult == sf::Socket::Done)
@@ -542,8 +556,13 @@ void NetworkSystem::SendLocalInput(GQE::IEntity* theEntity)
   anData << mGameTick;
   // Add Network ID of the local player
   anData << theEntity->mProperties.Get<GQE::Uint32>("uNetworkID");
+#if (SFML_VERSION_MAJOR < 2)
+  // Add IP Address of the local player
+  anData << theEntity->mProperties.Get<sf::IPAddress>("sNetworkAddr").ToString();
+#else
   // Add IP Address of the local player
   anData << theEntity->mProperties.Get<sf::IpAddress>("sNetworkAddr").toString();
+#endif
   // Add port number of the local player
   anData << theEntity->mProperties.Get<unsigned short>("uNetworkPort");
   // Add the current uKeyState property
@@ -588,9 +607,15 @@ void NetworkSystem::SendLocalInput(GQE::IEntity* theEntity)
       // Are we a local player who needs to send our keyboard state?
       if(anEntity->mProperties.Get<bool>("bNetworkLocal") == false)
       {
+#if (SFML_VERSION_MAJOR < 2)
+        // Now send our local players keystate to this network client
+        mClient.Send(anData, anEntity->mProperties.Get<sf::IPAddress>("sNetworkAddr"),
+          anEntity->mProperties.Get<unsigned short>("uNetworkPort"));
+#else
         // Now send our local players keystate to this network client
         mClient.send(anData, anEntity->mProperties.Get<sf::IpAddress>("sNetworkAddr"),
           anEntity->mProperties.Get<unsigned short>("uNetworkPort"));
+#endif
       }
     } // while(anQueue != anIter->second.end())
 

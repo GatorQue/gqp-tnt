@@ -8,6 +8,7 @@
  * @date 20120728 - Game Control fixes needed for multiplayer to work correctly
  * @date 20120730 - Improved network synchronization for multiplayer game play
  * @date 20120731 - Add sound effects and player spawn points
+ * @date 20120910 - Fix SFML v1.6 issues
  */
 #include "LevelSystem.hpp"
 #include <SFML/Graphics.hpp>
@@ -55,7 +56,7 @@ LevelSystem::LevelSystem(GQE::IApp& theApp,
   mSounds[0].SetID("resources/audio/coin8.wav",GQE::AssetLoadNow);
   mSounds[1].SetID("resources/audio/coin9.wav",GQE::AssetLoadNow);
   mSounds[2].SetID("resources/audio/coin10.wav",GQE::AssetLoadNow);
-  mSounds[3].SetID("resources/audio/chest.flac",GQE::AssetLoadNow);
+  mSounds[3].SetID("resources/audio/chest.wav",GQE::AssetLoadNow);
   mSounds[4].SetID("resources/audio/bump.wav",GQE::AssetLoadNow);
 
   // Set our bump sound for walls
@@ -141,9 +142,11 @@ void LevelSystem::AddProperties(GQE::IEntity* theEntity)
   theEntity->mProperties.Add<bool>("bVisible", false);
   theEntity->mProperties.Add<bool>("bLoading", true);
   theEntity->mProperties.Add<bool>("bLoadingPrevious", false);
-#if SFML_VERSION_MAJOR<2
+#if (SFML_VERSION_MAJOR < 2)
   theEntity->mProperties.Add<sf::IntRect>("rBoundingBox",
-    sf::IntRect(16*(int)mTileScale.x,32*(int)mTileScale.y,48*(int)mTileScale.x,32*(int)mTileScale.y));
+    sf::IntRect(16*(int)mTileScale.x,32*(int)mTileScale.y,
+                16*(int)mTileScale.x+32*(int)mTileScale.x,
+                32*(int)mTileScale.y+32*(int)mTileScale.y));
 #else
   theEntity->mProperties.Add<sf::IntRect>("rBoundingBox",
     sf::IntRect(16*(int)mTileScale.x,32*(int)mTileScale.y,32*(int)mTileScale.x,32*(int)mTileScale.y));
@@ -295,7 +298,7 @@ void LevelSystem::Draw()
           sf::String anScore("", mFont, 16.0f);
           // Position and color for the current players score
           anScore.SetColor(sf::Color(255,255,255,255));
-          anScore.SetPosition(anPosition.x + anBoundingBox.left + 6, anPosition.y - mTileHeight/3);
+          anScore.SetPosition(anPosition.x + anBoundingBox.Left + 6, anPosition.y - mTileHeight/3);
 #else
           sf::Text anScore("", mFont, 16);
           // Position and color for the current players score
@@ -326,6 +329,7 @@ void LevelSystem::Draw()
           anPosition.x += anBoundingBox.left;
           anPosition.y += anBoundingBox.top;
 
+          // FIXME: Change from RectangleShape to Shape::Rectangle constructor
           sf::RectangleShape anBar(sf::Vector2f(anBoundingBox.width, anBoundingBox.height));
           anBar.setPosition(anPosition);
           anBar.setFillColor(sf::Color::Transparent);
@@ -468,16 +472,30 @@ void LevelSystem::UpdateCoordinates(GQE::IEntity* theEntity)
   sf::Vector2u anScreen = theEntity->mProperties.Get<sf::Vector2u>("wScreen");
 
   // Compute the center tile that we are currently on based on our current position
+#if (SFML_VERSION_MAJOR < 2)
+  GQE::Uint32 anTileCenterX = (GQE::Uint32)((anPosition.x + anBoundingBox.Left +
+    anBoundingBox.GetWidth() / 2) / mTileWidth) % mScreenTileWidth;
+  GQE::Uint32 anTileCenterY = (GQE::Uint32)((anPosition.y + anBoundingBox.Top +
+    anBoundingBox.GetHeight() / 2) / mTileHeight) % mScreenTileHeight;
+#else
   GQE::Uint32 anTileCenterX = (GQE::Uint32)((anPosition.x + anBoundingBox.left +
     anBoundingBox.width / 2) / mTileWidth) % mScreenTileWidth;
   GQE::Uint32 anTileCenterY = (GQE::Uint32)((anPosition.y + anBoundingBox.top +
     anBoundingBox.height / 2) / mTileHeight) % mScreenTileHeight;
+#endif
 
   // Compute the tile if moving left, right, up, or down
+#if (SFML_VERSION_MAJOR < 2)
+  GQE::Uint32 anTileLeft = (GQE::Uint32)((anPosition.x + anVelocity.x + anBoundingBox.Left) / mTileWidth) % mScreenTileWidth;
+  GQE::Uint32 anTileRight = (GQE::Uint32)((anPosition.x + anVelocity.x + anBoundingBox.Left + anBoundingBox.GetWidth()) / mTileWidth) % mScreenTileWidth;
+  GQE::Uint32 anTileUp = (GQE::Uint32)((anPosition.y + anVelocity.y + anBoundingBox.Top) / mTileHeight) % mScreenTileHeight;
+  GQE::Uint32 anTileDown = (GQE::Uint32)((anPosition.y + anVelocity.y + anBoundingBox.Top + anBoundingBox.GetHeight()) / mTileHeight) % mScreenTileHeight;
+#else
   GQE::Uint32 anTileLeft = (GQE::Uint32)((anPosition.x + anVelocity.x + anBoundingBox.left) / mTileWidth) % mScreenTileWidth;
   GQE::Uint32 anTileRight = (GQE::Uint32)((anPosition.x + anVelocity.x + anBoundingBox.left + anBoundingBox.width) / mTileWidth) % mScreenTileWidth;
   GQE::Uint32 anTileUp = (GQE::Uint32)((anPosition.y + anVelocity.y + anBoundingBox.top) / mTileHeight) % mScreenTileHeight;
   GQE::Uint32 anTileDown = (GQE::Uint32)((anPosition.y + anVelocity.y + anBoundingBox.top + anBoundingBox.height) / mTileHeight) % mScreenTileHeight;
+#endif
 
   // Compute the map coordinates for no movement
   theEntity->mProperties.Set<sf::Vector2u>("wMap", sf::Vector2u(
@@ -644,7 +662,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
           // Update position to exactly next to the tile
           anPosition.x = (float)(anMapL.x % mScreenTileWidth) * mTileWidth -
 #if (SFML_VERSION_MAJOR < 2)
-            anBoundingBox.left + anBoundingBox.GetWidth();
+            anBoundingBox.Left + anBoundingBox.GetWidth();
 #else
             anBoundingBox.left + anBoundingBox.width;
 #endif
@@ -659,7 +677,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
           // Update position to exactly next to the tile
           anPosition.x = (float)(anMapR.x % mScreenTileWidth) * mTileWidth -
 #if (SFML_VERSION_MAJOR < 2)
-            anBoundingBox.left - anBoundingBox.GetWidth();
+            anBoundingBox.Left - anBoundingBox.GetWidth();
 #else
             anBoundingBox.left - anBoundingBox.width;
 #endif
@@ -679,7 +697,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
           // Update position to exactly next to the tile
           anPosition.y = (float)(anMapU.y % mScreenTileHeight) * mTileHeight -
 #if (SFML_VERSION_MAJOR < 2)
-            anBoundingBox.top + anBoundingBox.GetHeight();
+            anBoundingBox.Top + anBoundingBox.GetHeight();
 #else
             anBoundingBox.top + anBoundingBox.height;
 #endif
@@ -694,7 +712,7 @@ void LevelSystem::CheckWalls(GQE::IEntity* theEntity)
           // Update position to exactly next to the tile
           anPosition.y = (float)(anMapD.y % mScreenTileHeight) * mTileHeight -
 #if (SFML_VERSION_MAJOR < 2)
-            anBoundingBox.top - anBoundingBox.GetHeight();
+            anBoundingBox.Top - anBoundingBox.GetHeight();
 #else
             anBoundingBox.top - anBoundingBox.height;
 #endif
@@ -765,7 +783,7 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
     // Update position to exactly next to the tile
     anPosition.x = (float)(mScreenTileWidth - 1) * mTileWidth -
 #if (SFML_VERSION_MAJOR < 2)
-      anBoundingBox.left;
+      anBoundingBox.Left;
 #else
       anBoundingBox.left;
 #endif
@@ -778,7 +796,7 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
     anScreen.x < mScreenWidth)
   {
 #if (SFML_VERSION_MAJOR < 2)
-    anPosition.x = (float)-anBoundingBox.left;
+    anPosition.x = (float)-anBoundingBox.Left;
 #else
     anPosition.x = (float)-anBoundingBox.left;
 #endif
@@ -796,7 +814,7 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
   {
     anPosition.y = (float)(mScreenTileHeight - 1) * mTileHeight -
 #if (SFML_VERSION_MAJOR < 2)
-      anBoundingBox.top;
+      anBoundingBox.Top;
 #else
       anBoundingBox.top;
 #endif
@@ -809,7 +827,7 @@ void LevelSystem::CheckScreenEdges(GQE::IEntity* theEntity)
     anScreen.y < mScreenHeight)
   {
 #if (SFML_VERSION_MAJOR < 2)
-    anPosition.y = (float)-anBoundingBox.top;
+    anPosition.y = (float)-anBoundingBox.Top;
 #else
     anPosition.y = (float)-anBoundingBox.top;
 #endif
@@ -844,15 +862,16 @@ void LevelSystem::DrawBar(void)
 
     // Define our percent complete string value
 #if (SFML_VERSION_MAJOR < 2)
-    sf::RectangleShape anBar(sf::Vector2f(
-          float(mApp.mWindow.getSize().x-60)*mLoader->percent, 35));
+    // FIXME: Replace RectangleShape with Rectangle static constructor
+    //sf::RectangleShape anBar(sf::Vector2f(
+    //      float(mApp.mWindow.GetWidth()-60)*mLoader->percent, 35));
     sf::String  anPercent("", mFont, 30.0f);
     // Position and color for the tile being loaded/progress bar
     anPercent.SetColor(sf::Color(0,255,0,128));
     anPercent.SetPosition((mApp.mWindow.GetWidth() / 2)-50,
         (mApp.mWindow.GetHeight() / 2) + 30);
-    anBar.SetPosition(30, (mApp.mWindow.GetHeight() / 2) + 30);
-    anBar.SetFillColor(sf::Color(0,0,128,255));
+    //anBar.SetPosition(30, (mApp.mWindow.GetHeight() / 2) + 30);
+    //anBar.SetFillColor(sf::Color(0,0,128,255));
 #else
     sf::RectangleShape anBar(sf::Vector2f(
           float(mApp.mWindow.getSize().x-60)*mLoader->percent, 35));
@@ -879,7 +898,7 @@ void LevelSystem::DrawBar(void)
     // Draw our Loading please wait screen first
     mApp.mWindow.Draw(anSprite);
     // Draw our Loading bar below our percent complete number
-    mApp.mWindow.Draw(anBar);
+    //mApp.mWindow.Draw(anBar);
     // Draw our percent complete value
     mApp.mWindow.Draw(anPercent);
 #else
@@ -1188,8 +1207,8 @@ void LevelSystem::LoadStage2(void)
                 sf::IntRect(
                   (anMapTile.id%int(anWidth/mLoader->map.GetTileWidth()))*mLoader->map.GetTileWidth(),
                   (anMapTile.id/int(anWidth/mLoader->map.GetTileHeight()))*mLoader->map.GetTileHeight(),
-                  (anMapTile.id%int(anWidth/mLoader->map.GetTileWidth()))*mLoader->map.GetTileWidth+mTileWidth(),
-                  (anMapTile.id/int(anWidth/mLoader->map.GetTileHeight()))*mLoader->map.GetTileHeight+mTileHeight()));
+                  (anMapTile.id%int(anWidth/mLoader->map.GetTileWidth()))*mLoader->map.GetTileWidth()+mTileWidth,
+                  (anMapTile.id/int(anWidth/mLoader->map.GetTileHeight()))*mLoader->map.GetTileHeight()+mTileHeight));
           }
           //anInstance->mProperties.Set<sf::IntRect>("rBoundingBox",
           //    sf::IntRect(1,1,mLoader->map.GetTileWidth(),mLoader->map.GetTileHeight()));
